@@ -96,10 +96,13 @@ def combine_img_prediction(data, gt, pred):
     
     :returns img: the concatenated rgb image 
     """
+    if data.shape[-1]>=4:
+        data = data[...,0]
+        data = data.reshape(data.shape[0], data.shape[1], data.shape[2], 1)
     ny = pred.shape[2]
     ch = data.shape[3]
-    img = np.concatenate((to_rgb(crop_to_shape(data, pred.shape).reshape(-1, ny, ch)), 
-                          to_rgb(crop_to_shape(gt[..., 1], pred.shape).reshape(-1, ny, 1)), 
+    img = np.concatenate((to_rgb(data.reshape(-1, ny, ch)), 
+                          to_rgb(gt[..., 1].reshape(-1, ny, 1)), 
                           to_rgb(pred[..., 1].reshape(-1, ny, 1))), axis=1)
     return img
 

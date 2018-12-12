@@ -1,3 +1,2 @@
-__author__ = 'Joel Akeret'
-__version__ = '0.1.1'
-__credits__ = 'ETH Zurich, Institute for Astronomy'
+__author__ = 'Ryan Feng'
+__version__ = '1.0.0'

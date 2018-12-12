@@ -22,7 +22,10 @@ author: jakeret
 from __future__ import print_function, division, absolute_import, unicode_literals
 
 import numpy as np
-from tf_unet.image_util import BaseDataProvider
+import glob
+import os
+from image_util import BaseDataProvider
+from parameter import Parameter
 
 class GrayScaleDataProvider(BaseDataProvider):
     channels = 1
@@ -104,9 +107,6 @@ def create_image_and_label(nx,ny, cnt = 10, r_min = 5, r_max = 50, border = 92, 
     else:
         return image, label[..., 1]
 
-
-
-
 def to_rgb(img):
     img = img.reshape(img.shape[0], img.shape[1])
     img[np.isnan(img)] = 0
@@ -118,3 +118,76 @@ def to_rgb(img):
     rgb = np.stack((red, green, blue), axis=2)
     return rgb
 
+para = Parameter()
+class fourChannelProvider(BaseDataProvider):
+    def __init__(self, search_path, a_min=None, a_max=None, data_suffix="fat.npy",
+                 mask_suffix='label.npy', shuffle_data=True, n_class = 2):
+        super(fourChannelProvider, self).__init__(a_min, a_max)
+        self.data_suffix = data_suffix
+        self.mask_suffix = mask_suffix
+        self.file_idx = -1
+        self.shuffle_data = shuffle_data
+        self.n_class = n_class
+        
+        self.data_files = self._find_data_files(search_path)
+        
+        if self.shuffle_data:
+            np.random.shuffle(self.data_files)
+        
+        assert len(self.data_files) > 0, "No training files"
+        print("Number of files used: %s" % len(self.data_files))
+        
+        img = self._load_file(self.data_files[0])
+        self.channels = 1 if len(img.shape) == 2 else img.shape[-1]
+        
+    def _find_data_files(self, search_path):
+        all_files = glob.glob(search_path)
+        return [name for name in all_files if self.data_suffix in name]
+    
+    def _load_file(self, path, dtype=np.float32):
+        fat_path = path.replace(self.data_suffix, "fat.npy")
+        inn_path = path.replace(self.data_suffix, "inn.npy")
+        wat_path = path.replace(self.data_suffix, "wat.npy")
+        opp_path = path.replace(self.data_suffix, "opp.npy")
+        fat_img = np.array(np.load(fat_path), dtype=dtype)
+        inn_img = np.array(np.load(inn_path), dtype=dtype)
+        wat_img = np.array(np.load(wat_path), dtype=dtype)
+        opp_img = np.array(np.load(opp_path), dtype=dtype)
+
+        img = np.zeros((fat_img.shape[0], fat_img.shape[1], 4), dtype=dtype)
+        img[...,0] = fat_img
+        img[...,1] = inn_img
+        img[...,2] = wat_img
+        img[...,3] = opp_img
+
+        return img
+
+    def _load_label(self, path, dtype=np.bool):
+        return np.array(np.load(path), dtype=dtype) 
+
+    def _cylce_file(self):
+        self.file_idx += 1
+        if self.file_idx >= len(self.data_files):
+            self.file_idx = 0 
+            if self.shuffle_data:
+                np.random.shuffle(self.data_files)
+        
+    def _next_data(self):
+        self._cylce_file()
+        image_name = self.data_files[self.file_idx]
+        label_name = image_name.replace(self.data_suffix, self.mask_suffix)
+        
+        img = self._load_file(image_name, np.float32)
+        label = self._load_label(label_name, np.bool)
+    
+        return img,label
+
+
+if __name__ == '__main__':
+    root_address = para.root_address
+    generator_address = os.path.join(root_address, 'data/train/*/*/*.npy')
+    generator = fourChannelProvider(generator_address)
+    a, b= generator(4)
+    print(a.shape)
+    print(b.shape)
+    print(generator.channels)
