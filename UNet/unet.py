@@ -606,7 +606,7 @@ class Unet(object):
         :param model_path: path to file system location
         """
 
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(var_list=tf.global_variables())
         save_path = saver.save(sess, model_path)
         return save_path
 
@@ -618,7 +618,7 @@ class Unet(object):
         :param model_path: path to file system checkpoint location
         """
 
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(tf.global_variables())
         saver.restore(sess, model_path)
         logging.info("Model restored from file: %s" % model_path)
 
@@ -672,8 +672,9 @@ class Trainer(object):
             #self.learning_rate_node = tf.Variable(learning_rate, name="learning_rate")
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate_node, beta1=0.9, beta2=0.99,
-                            **self.opt_kwargs).minimize(self.net.cost, global_step=global_step)
+            with tf.control_dependencies(update_ops):
+                optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate_node, beta1=0.9, beta2=0.99,
+                                **self.opt_kwargs).minimize(self.net.cost, global_step=global_step)
 
         return optimizer
 

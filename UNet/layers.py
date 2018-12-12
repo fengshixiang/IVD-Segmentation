@@ -69,7 +69,7 @@ def deconv2d(x, in_dim, out_dim):
 def inception_conv(x, in_dim, out_dim, keep_prob_, training):
     with tf.name_scope("conv2d"):
         stddev = np.sqrt(2 / (3 ** 2 * out_dim))
-        #x = tf.layers.batch_normalization(x, training=training)
+        x = tf.layers.batch_normalization(x, training=training)
         w0 = weight_variable([3, 3, in_dim, out_dim], stddev, name="w0")
         b0 = bias_variable([out_dim], name="b0")
         conv2d_0 = tf.nn.bias_add(tf.nn.conv2d(x, w0, strides=[1, 1, 1, 1], padding="SAME"), b0)
