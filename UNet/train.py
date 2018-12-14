@@ -46,14 +46,15 @@ x_test, y_test= generator(1)
 prediction = net.predict(os.path.join(unet_trained_path, 'model.ckpt'), x_test)
 
 logging.info(
-"Layers: {layers},\nFeatures: {features}\n \
-Cost: {cost}, Epochs: {epochs},\n \
-Dropout: {dropout}, Learning_rate: {learning_rate}\n \
+"Layers: {layers},\nFeatures: {features}\n\
+Cost: {cost}, Epochs: {epochs}, Decay_epochs: {decay_epochs}\n\
+Dropout: {dropout}, Learning_rate: {learning_rate}\n\
 Channel: {channel}\nCreate: {create}".format(
         layers=para.layers,
         features=para.features_root,
         cost=para.cost,
         epochs=para.epochs,
+        decay_epochs=para.decay_epochs,
         dropout=para.dropout,
         learning_rate=para.learning_rate,
         channel=para.channel,
@@ -62,7 +63,7 @@ Channel: {channel}\nCreate: {create}".format(
 fo_addr = os.path.join(root_address, 'para.txt')
 fo = open(fo_addr, 'w')
 fo.write("Layers: {layers}\nBatch_size: {batch_size}\nFeatures: {features}\n\
-Cost: {cost}\nEpochs: {epochs}\nDropout: {dropout}\nLearning_rate: {learning_rate}\n\
+Cost: {cost}\nEpochs: {epochs}\nDecay_epochs: {decay_epochs}\nDropout: {dropout}\nLearning_rate: {learning_rate}\n\
 Root_address: {root_address}\nChannel: {channel}\n\
 Create: {create}".format(
             layers=para.layers,
@@ -70,6 +71,7 @@ Create: {create}".format(
             features=para.features_root,
             cost=para.cost,
             epochs=para.epochs,
+            decay_epochs=para.decay_epochs,
             dropout=para.dropout,
             learning_rate=para.learning_rate,
             root_address=para.root_address,
@@ -81,6 +83,6 @@ plt.imshow(x_test[0,...,0], cmap='Greys_r')
 plt.savefig(os.path.join(unet_trained_path, 'image.png'))
 plt.imshow(y_test[0,...,1])
 plt.savefig(os.path.join(unet_trained_path, 'label.png'))
-mask = prediction[0,...,1] > 0.4
+mask = prediction[0,...,1] > para.mask
 plt.imshow(mask)
 plt.savefig(os.path.join(unet_trained_path, 'pre.png'))
