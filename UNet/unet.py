@@ -378,7 +378,6 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
             elif layer==3:
                 with tf.name_scope("fat"):
                     in_node = tf.concat([fat_pools[2], inn_pools[2], wat_pools[2], opp_pools[2]], 3)
-
                     tmp_node = cropCenter(fat_inputs[2], in_node)
                     in_node = tf.concat([in_node, tmp_node], 3)
                     fat_inputs[layer] = in_node
@@ -431,6 +430,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
             h_deconv = deconv2d(in_node, features, features//2, training)
             h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
                               wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
             deconv[layer] = h_deconv_concat
             in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
             up_h_convs[layer] = in_node

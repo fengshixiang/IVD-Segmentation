@@ -71,50 +71,47 @@ def inception_conv(x, in_dim, out_dim, keep_prob_, training):
 
         w0 = weight_variable([3, 3, in_dim, out_dim], stddev, name="w0")
         conv2d_0 = tf.nn.conv2d(x, w0, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_0 = tf.layers.batch_normalization(conv2d_0, training=training)
+        #conv2d_0 = tf.layers.batch_normalization(conv2d_0, training=training)
         conv2d_0 = tf.nn.relu(conv2d_0)
-
 
         w1 = weight_variable([1, 1, out_dim, out_dim], stddev, name="w1")
         conv2d_1 = tf.nn.conv2d(conv2d_0, w1, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_1 = tf.layers.batch_normalization(conv2d_1, training=training)
+        #conv2d_1 = tf.layers.batch_normalization(conv2d_1, training=training)
         conv2d_1 = tf.nn.relu(conv2d_1)
 
         w2 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w2")
         conv2d_2 = tf.nn.conv2d(conv2d_0, w2, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_2 = tf.layers.batch_normalization(conv2d_2, training=training)
+        #conv2d_2 = tf.layers.batch_normalization(conv2d_2, training=training)
         conv2d_2 = tf.nn.relu(conv2d_2)
 
         w3 = weight_variable([5, 5, out_dim, out_dim], stddev, name="w3")
         conv2d_3 = tf.nn.conv2d(conv2d_0, w3, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
+        #conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
         conv2d_3 = tf.nn.relu(conv2d_3)
 
         w4 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w4")
         conv2d_4 = tf.nn.atrous_conv2d(conv2d_0, w4, rate=2, padding="SAME")
-        conv2d_4 = tf.layers.batch_normalization(conv2d_4, training=training)
+        #conv2d_4 = tf.layers.batch_normalization(conv2d_4, training=training)
         conv2d_4 = tf.nn.relu(conv2d_4)
 
         w5 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w5")
         conv2d_5 = tf.nn.atrous_conv2d(conv2d_0, w5, rate=4, padding="SAME")
-        conv2d_5 = tf.layers.batch_normalization(conv2d_5, training=training)
+        #conv2d_5 = tf.layers.batch_normalization(conv2d_5, training=training)
         conv2d_5 = tf.nn.relu(conv2d_5)
 
+        conv2d_input = tf.concat([conv2d_1, conv2d_2, conv2d_3, conv2d_4, conv2d_5], axis=3)
+        w6 = weight_variable([1, 1, out_dim*5, out_dim], stddev, name="w6")
+        conv2d_6 = tf.nn.conv2d(conv2d_input, w6, strides=[1, 1, 1, 1], padding="SAME")
+        #conv2d_6 = tf.layers.batch_normalization(conv2d_6, training=training)
+        conv2d_6 = tf.nn.relu(conv2d_6)
 
-        conv2d = tf.concat([conv2d_1, conv2d_2, conv2d_3, conv2d_4, conv2d_5], axis=3)
-        w6 = weight_variable([3, 3, out_dim*5, out_dim], stddev, name="w6")
-        conv2d = tf.nn.conv2d(conv2d, w6, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d = tf.layers.batch_normalization(conv2d, training=training)
-        conv2d = tf.nn.relu(conv2d)
-
-
-        conv2d = conv2d + conv2d_0
+        conv2d = conv2d_6 + conv2d_0
         w = weight_variable([3, 3, out_dim, out_dim], stddev, name="w")
-        conv2d = tf.nn.conv2d(conv2d, w, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d = tf.layers.batch_normalization(conv2d, training=training)
-        conv2d = tf.nn.relu(conv2d)
+        conv2d_output = tf.nn.conv2d(conv2d, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_output = tf.layers.batch_normalization(conv2d_output, training=training)
+        conv2d_output = tf.nn.relu(conv2d_output)
 
-        return conv2d
+        return conv2d_output
 
 def dense_link(x, stride, out_dim):
     with tf.name_scope("dense_link"):
