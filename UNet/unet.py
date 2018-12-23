@@ -341,8 +341,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
             elif layer==2:
                 with tf.name_scope("fat"):
                     in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
-                    fat_inputs_1 = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
-                    tmp_node = cropCenter(fat_inputs_1, in_node)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
                     in_node = tf.concat([in_node, tmp_node], 3)
                     fat_inputs[layer] = in_node
                     conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
@@ -350,8 +349,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
                     fat_pools[layer] = max_pool(conv, 2)
                 with tf.name_scope("inn"):
                     in_node = tf.concat([inn_pools[1], wat_pools[1], opp_pools[1], fat_pools[1]], 3)
-                    inn_inputs_1 = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
-                    tmp_node = cropCenter(inn_inputs_1, in_node)
+                    tmp_node = cropCenter(inn_inputs[1], in_node)
                     in_node = tf.concat([in_node, tmp_node], 3)
                     inn_inputs[layer] = in_node
                     conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
@@ -359,8 +357,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
                     inn_pools[layer] = max_pool(conv, 2)
                 with tf.name_scope("wat"):
                     in_node = tf.concat([wat_pools[1], opp_pools[1], fat_pools[1], inn_pools[1]], 3)
-                    wat_inputs_1 = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
-                    tmp_node = cropCenter(wat_inputs_1, in_node)
+                    tmp_node = cropCenter(wat_inputs[1], in_node)
                     in_node = tf.concat([in_node, tmp_node], 3)
                     wat_inputs[layer] = in_node
                     conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
@@ -368,8 +365,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
                     wat_pools[layer] = max_pool(conv, 2)
                 with tf.name_scope("opp"):
                     in_node = tf.concat([opp_pools[1], fat_pools[1], inn_pools[1], wat_pools[1]], 3)
-                    opp_inputs_1 = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
-                    tmp_node = cropCenter(opp_inputs_1, in_node)
+                    tmp_node = cropCenter(opp_inputs[1], in_node)
                     in_node = tf.concat([in_node, tmp_node], 3)
                     opp_inputs[layer] = in_node
                     conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
@@ -577,13 +573,7 @@ class Unet(object):
         :param sess: current session
         :param model_path: path to file system location
         """
-        var_list = tf.trainable_variables()
-        g_list = tf.global_variables()
-        bn_moving_vars = [g for g in g_list if 'moving_mean' in g.name]
-        bn_moving_vars += [g for g in g_list if 'moving_variance' in g.name]
-        var_list += bn_moving_vars
-        #saver = tf.train.Saver(var_list=tf.global_variables())
-        saver = tf.train.Saver(var_list=var_list)
+        saver = tf.train.Saver(var_list=tf.global_variables())
         save_path = saver.save(sess, model_path)
         return save_path
 
