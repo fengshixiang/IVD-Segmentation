@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 para = Parameter()
 root_address = para.root_address
 generator_address = os.path.join(root_address, 'data/train/*/*/*.npy')
-generator = image_gen.fourChannelProvider(generator_address)
+generator = image_gen.shapeProvider(generator_address)
 result_path = os.path.join(root_address, 'result')
 if not os.path.exists(result_path):
     os.mkdir(result_path)
@@ -42,7 +42,7 @@ path = trainer.train(generator, unet_trained_path, training_iters=para.training_
                      restore=para.restore, prediction_path=prediction_address)
 
 #test one image
-x_test, y_test= generator(1)
+x_test, y_test, z_test= generator(1)
 prediction = net.predict(os.path.join(unet_trained_path, 'model.ckpt'), x_test)
 
 logging.info(

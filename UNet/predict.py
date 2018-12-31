@@ -57,7 +57,7 @@ for addr in os.listdir(data_address):     #addr:01
 	patient_save_list.append(image_save_list)
 
 print('start to predict')
-generator = image_gen.fourChannelProvider(provider_path)
+generator = image_gen.shapeProvider(provider_path)
 net = unet.Unet(channels=generator.channels, n_class=generator.n_class, cost = para.cost,
                 cost_kwargs=dict(regularizer=para.regularizer), layers=para.layers, 
                 features_root=para.features_root, training=False)
@@ -114,7 +114,8 @@ with tf.Session(config=config) as sess:
                 img_arr = process_data(img_arr)
                 x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
                 y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
-                prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.keep_prob: 1.})
+                range_arr = np.empty((x_test.shape[0], 4))
+                prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.z:range_arr, net.keep_prob: 1.})
                 mask = prediction[0,...,1] > para.mask
                 np.save(patient_save_list[i][j], mask)
                 plt.imshow(mask, cmap='Greys_r')
