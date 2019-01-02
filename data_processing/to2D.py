@@ -3,7 +3,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data' 
+npy_data_address = '/DATA5_DB8/data/sxfeng/data/tmp' 
 data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/2D_data_3' 
 start_index = 0
 end_index = 36
@@ -77,7 +77,6 @@ for addr in os.listdir(npy_data_address):
 		#np.save(wat_imagearr_save_addr, wat_image_arr)
 		np.save(labelarr_save_addr, image_label_arr)
 '''
-
 '''
 for addr in os.listdir(npy_data_address):
 	print('process on {}'.format(addr))
@@ -128,12 +127,12 @@ for addr in os.listdir(npy_data_address):
 		wat_imagearr_save_addr = os.path.join(index_addr, '{}_{}_wat.npy'.format(addr, index))
 		labelarr_save_addr = os.path.join(index_addr, '{}_{}_label.npy'.format(addr, index))
 		
-		plt.imshow(fat_image_arr, cmap='Greys_r')
-		plt.savefig(fat_image_save_addr)
-		plt.imshow(inn_image_arr, cmap='Greys_r')
-		plt.savefig(inn_image_save_addr)
-		plt.imshow(opp_image_arr, cmap='Greys_r')
-		plt.savefig(opp_image_save_addr)
+		#plt.imshow(fat_image_arr, cmap='Greys_r')
+		#plt.savefig(fat_image_save_addr)
+		#plt.imshow(inn_image_arr, cmap='Greys_r')
+		#plt.savefig(inn_image_save_addr)
+		#plt.imshow(opp_image_arr, cmap='Greys_r')
+		#plt.savefig(opp_image_save_addr)
 		plt.imshow(wat_image_arr, cmap='Greys_r')
 		plt.savefig(wat_image_save_addr)
 		plt.imshow(image_label_arr, cmap='Greys_r')

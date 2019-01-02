@@ -10,8 +10,8 @@ import os
 class Parameter(object):
     def __init__(self): 
         #self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/01-13_2'
-        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/010611_2'
-        self.cost = 'shape' #name of the cost function. cross_entropy , dice, shape
+        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/010611_1'
+        self.cost = 'shape_2' #name of the cost function. cross_entropy , dice, shape
         self.regularizer=None       #power of the L2 regularizers added to the loss function
         self.channel=4
         self.layers=5

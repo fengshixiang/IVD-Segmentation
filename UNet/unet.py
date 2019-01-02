@@ -545,7 +545,23 @@ class Unet(object):
                     flat_label = tf.reshape(label, [-1, self.n_class])
                     loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
                                                                                     labels=flat_label))
-
+            elif cost_name == "shape_2":
+                loss = 0
+                for batch_index in range(4):   # 4 is batch_size
+                    y_min = self.z[batch_index, 2]
+                    y_max = self.z[batch_index, 3]
+                    label = self.y[batch_index, :, 0:y_max]
+                    logit = logits[batch_index, :, 0:y_max]
+                    flat_logit = tf.reshape(logit, [-1, self.n_class])
+                    flat_label = tf.reshape(label, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                                                                                    labels=flat_label))
+                    label_2 = self.y[batch_index, :, 240:]
+                    logit_2 = logits[batch_index, :, 240:]
+                    flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
+                    flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                                                                                    labels=flat_label_2))
             else:
                 raise ValueError("Unknown cost function: " % cost_name)
 
