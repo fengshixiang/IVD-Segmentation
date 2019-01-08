@@ -18,7 +18,7 @@ class Parameter(object):
         self.features_root=32
         self.batch_size=4
         self.training_iters=117
-        self.epochs=100
+        self.epochs=20
         self.display_step=1170     #number of steps till outputting stats
         self.dropout=1.0
         self.restore=False       #Flag if previous model should be restored

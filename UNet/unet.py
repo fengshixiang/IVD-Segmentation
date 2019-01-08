@@ -480,7 +480,7 @@ class Unet(object):
 
         self.x = tf.placeholder("float", shape=[None, None, None, channels], name="x")
         self.y = tf.placeholder("float", shape=[None, None, None, n_class], name="y")
-        self.z = tf.placeholder(tf.int32, shape=[None, 4], name="z")
+        self.z = tf.placeholder(tf.int32, shape=[None, 8], name="z")
         self.keep_prob = tf.placeholder(tf.float32, name="dropout_probability")  # dropout (keep probability)
 
         #logits, self.variables= create_conv_net(self.x, self.keep_prob, channels, n_class, **kwargs)
@@ -550,18 +550,80 @@ class Unet(object):
                 for batch_index in range(4):   # 4 is batch_size
                     y_min = self.z[batch_index, 2]
                     y_max = self.z[batch_index, 3]
-                    label = self.y[batch_index, :, 0:y_max]
-                    logit = logits[batch_index, :, 0:y_max]
+                    label = self.y[batch_index, :, 0:y_max+7]
+                    logit = logits[batch_index, :, 0:y_max+7]
                     flat_logit = tf.reshape(logit, [-1, self.n_class])
                     flat_label = tf.reshape(label, [-1, self.n_class])
                     loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
                                                                                     labels=flat_label))
-                    label_2 = self.y[batch_index, :, 240:]
-                    logit_2 = logits[batch_index, :, 240:]
+                    label_2 = self.y[batch_index, :, 252:]
+                    logit_2 = logits[batch_index, :, 252:]
                     flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
                     flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
                     loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
                                                                                     labels=flat_label_2))
+            elif cost_name == "shape_3":
+                loss = 0
+                for batch_index in range(4):   # 4 is batch_size
+                    x_min = self.z[batch_index, 0]
+                    x_max = self.z[batch_index, 1]
+                    y_min = self.z[batch_index, 2]
+                    y_max = self.z[batch_index, 3]
+                    label = self.y[batch_index, :, 0:y_max+7]
+                    logit = logits[batch_index, :, 0:y_max+7]
+                    flat_logit = tf.reshape(logit, [-1, self.n_class])
+                    flat_label = tf.reshape(label, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                                                                                    labels=flat_label))
+                    label_2 = self.y[batch_index, :, 252:]
+                    logit_2 = logits[batch_index, :, 252:]
+                    flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
+                    flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                                                                                    labels=flat_label_2))
+                    label_3 = self.y[batch_index, 0:x_min, y_max+7:251]
+                    logit_3 = logits[batch_index, 0:x_min, y_max+7:251]
+                    flat_logit_3 = tf.reshape(logit_3, [-1, self.n_class])
+                    flat_label_3 = tf.reshape(label_3, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_3,
+                                                                                    labels=flat_label_3))
+                    label_4 = self.y[batch_index, x_max:255, y_max+7:251]
+                    logit_4 = logits[batch_index, x_max:255, y_max+7:251]
+                    flat_logit_4 = tf.reshape(logit_4, [-1, self.n_class])
+                    flat_label_4 = tf.reshape(label_4, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_4,
+                                                                                    labels=flat_label_4))
+            elif cost_name == "shape_4":
+                loss = 0
+                for batch_index in range(4):   # 4 is batch_size
+                    x_min = self.z[batch_index, 0]
+                    x_max = self.z[batch_index, 1]
+                    y_min = self.z[batch_index, 2]
+                    y_max = self.z[batch_index, 3]
+                    smallest_x_min = self.z[batch_index, 4]
+                    smallest_x_max = self.z[batch_index, 5]
+                    smallest_y_min = self.z[batch_index, 6]
+                    smallest_y_max = self.z[batch_index, 7]
+
+                    label = self.y[batch_index, :, 0:y_max+7]
+                    logit = logits[batch_index, :, 0:y_max+7]
+                    flat_logit = tf.reshape(logit, [-1, self.n_class])
+                    flat_label = tf.reshape(label, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                                                                                    labels=flat_label))
+                    label_2 = self.y[batch_index, :, 252:]
+                    logit_2 = logits[batch_index, :, 252:]
+                    flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
+                    flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                                                                                    labels=flat_label_2))
+
+                    label_3 = self.y[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
+                    logit_3 = logits[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
+                    flat_logit_3 = tf.reshape(logit_3, [-1, self.n_class])
+                    flat_label_3 = tf.reshape(label_3, [-1, self.n_class])
+                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_3,
+                                                                                    labels=flat_label_3))
             else:
                 raise ValueError("Unknown cost function: " % cost_name)
 

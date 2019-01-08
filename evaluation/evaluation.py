@@ -161,6 +161,26 @@ def _get_set(gtVoxel, preVoxel, labeled_num):
                 voxel[tmp_arr[0][j], tmp_arr[1][j], tmp_arr[2][j]] = 1
             num_per_rigion[i] = len(tmp_arr[0])
 '''
+
+
+def plt_histogram(gt_len_list, dice_list):
+    save_addr = os.path.join(root_address, 'result/hist')
+    if not os.path.exists(save_addr):
+        os.mkdir(save_addr)
+    plt.figure()
+    plt.subplot(2, 2, 1)
+    plt.scatter(gt_len_list[0], dice_list[0], marker='x')
+    plt.subplot(2, 2, 2)
+    plt.scatter(gt_len_list[1], dice_list[1], marker='+')
+    plt.subplot(2, 2, 3)
+    plt.scatter(gt_len_list[2], dice_list[2], marker='o')
+    plt.subplot(2, 2, 4)
+    plt.scatter(gt_len_list[0], dice_list[0], marker='x')
+    plt.scatter(gt_len_list[1], dice_list[1], marker='+')
+    plt.scatter(gt_len_list[2], dice_list[2], marker='o')
+    plt.savefig(save_addr+'/result.png')
+
+
 def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
     
     if not os.path.exists(labeled_voxel_save_address):
@@ -175,6 +195,7 @@ def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
     labeled_voxel_save_addr = [path.replace('pre_voxel', 'labeled_voxel') for path in pre_voxel_addr]  # labeled_voxel/01
 
     dice_list = []
+    gt_len_list = []
     for i in range(len(gt_voxel_addr)):
         gt_addr = ''
         for filename in os.listdir(gt_voxel_addr[i]): 
@@ -195,12 +216,15 @@ def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
         print(labeled_num)
         np.save(labeled_addr, labeledVoxel)  # save labeled voxel
         gt_IVDset_list, pre_IVDset_list = _get_set(gtVoxel, labeledVoxel, labeled_num)
+        image_gt_len_list = [len(gt_IVDset_list[i]) for i in range(7)]
         image_dice_list = Dice_3D(gt_IVDset_list, pre_IVDset_list)
+        gt_len_list.append(image_gt_len_list)
         dice_list.append(image_dice_list)
         print(image_dice_list)
 
     mdoc = MDOC(dice_list)
     sddoc = SDDOC(dice_list, mdoc)
+    plt_histogram(gt_len_list, dice_list)
     return mdoc, sddoc
 
 
@@ -208,6 +232,7 @@ if __name__ == '__main__':
     img2voxel(label_pre_address, voxel_save_address)
     print('start evaluation')
     mdoc, sddoc = eval(voxel_address, voxel_save_address,  labeled_voxel_save_address)
+
     print(mdoc)
     print(sddoc)
 
