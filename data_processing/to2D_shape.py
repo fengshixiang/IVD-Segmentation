@@ -6,9 +6,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scipy.ndimage.measurements as mear
 
-a = ['01', '02', '03', '04', '05', '06', '07', '08',\
-     '09', '10', '11', '12', '13', '14', '15', '16']
-#a = ['01', '06', '11']
+#a = ['01', '02', '03', '04', '05', '06', '07', '08',\
+#     '09', '10', '11', '12', '13', '14', '15', '16']
+a = ['01', '06', '11']
 
 def del_small_rigion(voxel):
     #for gt voxel, find the top 7 rigions and delete others
@@ -56,7 +56,8 @@ def _select_small_IVD(voxel):
 
 for index in a:
     npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data/{}/{}_Labels.npy'.format(index, index)
-    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/2D_data_all_shape/{}'.format(index) 
+    #data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/2D_data_all_shape/{}'.format(index) 
+    data_save_address = '/DATA/data/sxfeng/Program/ensemble/greater/2D_data/{}'.format(index) 
     voxel = np.load(npy_data_address)
     voxel = del_small_rigion(voxel)
 

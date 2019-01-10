@@ -335,7 +335,7 @@ class shapeProvider(BaseDataProvider):
 
         X = np.zeros((n, nx, ny, self.channels))
         Y = np.zeros((n, nx, ny, self.n_class))
-        Z = np.zeros((n, 4))
+        Z = np.zeros((n, 8))
 
         X[0] = train_data
         Y[0] = labels

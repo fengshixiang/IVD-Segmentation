@@ -554,14 +554,16 @@ class Unet(object):
                     logit = logits[batch_index, :, 0:y_max+7]
                     flat_logit = tf.reshape(logit, [-1, self.n_class])
                     flat_label = tf.reshape(label, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                    loss_tmp = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
                                                                                     labels=flat_label))
                     label_2 = self.y[batch_index, :, 252:]
                     logit_2 = logits[batch_index, :, 252:]
                     flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
                     flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                    loss_tmp += tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
                                                                                     labels=flat_label_2))
+                    loss_tmp = loss_tmp/(256*256)
+                    loss += loss_tmp
             elif cost_name == "shape_3":
                 loss = 0
                 for batch_index in range(4):   # 4 is batch_size
@@ -569,30 +571,21 @@ class Unet(object):
                     x_max = self.z[batch_index, 1]
                     y_min = self.z[batch_index, 2]
                     y_max = self.z[batch_index, 3]
-                    label = self.y[batch_index, :, 0:y_max+7]
-                    logit = logits[batch_index, :, 0:y_max+7]
+
+                    label = self.y[batch_index]
+                    logit = logits[batch_index]
                     flat_logit = tf.reshape(logit, [-1, self.n_class])
                     flat_label = tf.reshape(label, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                    loss_tmp = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
                                                                                     labels=flat_label))
-                    label_2 = self.y[batch_index, :, 252:]
-                    logit_2 = logits[batch_index, :, 252:]
+                    label_2 = self.y[batch_index, x_min:x_max, y_max+7:252]
+                    logit_2 = logits[batch_index, x_min:x_max, y_max+7:252]
                     flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
                     flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                    loss_tmp -= tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
                                                                                     labels=flat_label_2))
-                    label_3 = self.y[batch_index, 0:x_min, y_max+7:251]
-                    logit_3 = logits[batch_index, 0:x_min, y_max+7:251]
-                    flat_logit_3 = tf.reshape(logit_3, [-1, self.n_class])
-                    flat_label_3 = tf.reshape(label_3, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_3,
-                                                                                    labels=flat_label_3))
-                    label_4 = self.y[batch_index, x_max:255, y_max+7:251]
-                    logit_4 = logits[batch_index, x_max:255, y_max+7:251]
-                    flat_logit_4 = tf.reshape(logit_4, [-1, self.n_class])
-                    flat_label_4 = tf.reshape(label_4, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_4,
-                                                                                    labels=flat_label_4))
+                    loss_tmp = loss_tmp/(256*256)
+                    loss += loss_tmp
             elif cost_name == "shape_4":
                 loss = 0
                 for batch_index in range(4):   # 4 is batch_size
@@ -605,25 +598,52 @@ class Unet(object):
                     smallest_y_min = self.z[batch_index, 6]
                     smallest_y_max = self.z[batch_index, 7]
 
-                    label = self.y[batch_index, :, 0:y_max+7]
-                    logit = logits[batch_index, :, 0:y_max+7]
+                    label = self.y[batch_index]
+                    logit = logits[batch_index]
                     flat_logit = tf.reshape(logit, [-1, self.n_class])
                     flat_label = tf.reshape(label, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                    loss_tmp = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
                                                                                     labels=flat_label))
-                    label_2 = self.y[batch_index, :, 252:]
-                    logit_2 = logits[batch_index, :, 252:]
+                    label_2 = self.y[batch_index, x_min:x_max, y_max+7:252]
+                    logit_2 = logits[batch_index, x_min:x_max, y_max+7:252]
                     flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
                     flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                    loss_tmp -= tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
                                                                                     labels=flat_label_2))
-
                     label_3 = self.y[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
                     logit_3 = logits[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
                     flat_logit_3 = tf.reshape(logit_3, [-1, self.n_class])
                     flat_label_3 = tf.reshape(label_3, [-1, self.n_class])
-                    loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_3,
+                    loss_tmp += tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_3,
                                                                                     labels=flat_label_3))
+                    loss_tmp = loss_tmp/(256*256)
+                    loss += loss_tmp
+            elif cost_name == "shape_5":
+                loss = 0
+                for batch_index in range(4):   # 4 is batch_size
+                    x_min = self.z[batch_index, 0]
+                    x_max = self.z[batch_index, 1]
+                    y_min = self.z[batch_index, 2]
+                    y_max = self.z[batch_index, 3]
+                    smallest_x_min = self.z[batch_index, 4]
+                    smallest_x_max = self.z[batch_index, 5]
+                    smallest_y_min = self.z[batch_index, 6]
+                    smallest_y_max = self.z[batch_index, 7]
+
+                    label = self.y[batch_index]
+                    logit = logits[batch_index]
+                    flat_logit = tf.reshape(logit, [-1, self.n_class])
+                    flat_label = tf.reshape(label, [-1, self.n_class])
+                    loss_tmp = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit,
+                                                                                    labels=flat_label))
+                    label_2 = self.y[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
+                    logit_2 = logits[batch_index, smallest_x_min-2:smallest_x_max+2, smallest_y_min-2:smallest_y_max+2]
+                    flat_logit_2 = tf.reshape(logit_2, [-1, self.n_class])
+                    flat_label_2 = tf.reshape(label_2, [-1, self.n_class])
+                    loss_tmp += tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logit_2,
+                                                                                    labels=flat_label_2))
+                    loss_tmp = loss_tmp/(256*256)
+                    loss += loss_tmp
             else:
                 raise ValueError("Unknown cost function: " % cost_name)
 
@@ -652,7 +672,7 @@ class Unet(object):
             self.restore(sess, model_path)
 
             y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], self.n_class))
-            range_arr = np.empty((x_test.shape[0], 4))
+            range_arr = np.empty((x_test.shape[0], 8))
             prediction = sess.run(self.predicter, feed_dict={self.x: x_test, self.y: y_dummy, self.z: range_arr, self.keep_prob: 1.})
 
         return prediction

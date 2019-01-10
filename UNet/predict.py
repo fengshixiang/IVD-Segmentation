@@ -114,7 +114,7 @@ with tf.Session(config=config) as sess:
                 img_arr = process_data(img_arr)
                 x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
                 y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
-                range_arr = np.empty((x_test.shape[0], 4))
+                range_arr = np.empty((x_test.shape[0], 8))
                 prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.z:range_arr, net.keep_prob: 1.})
                 mask = prediction[0,...,1] > para.mask
                 np.save(patient_save_list[i][j], mask)
