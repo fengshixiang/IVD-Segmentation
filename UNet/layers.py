@@ -54,6 +54,15 @@ def conv2d(x, in_dim, out_dim, keep_prob_):
         conv_2d_b = tf.nn.bias_add(conv_2d, b)
         return tf.nn.dropout(conv_2d_b, keep_prob_)
 
+def conv2d_2(x, in_dim, out_dim, keep_prob_):
+    with tf.name_scope("conv2d"):
+        stddev = np.sqrt(2 / (3 ** 2 * 32))
+        w = weight_variable([3, 3, in_dim, out_dim], stddev, name="w")
+        b = bias_variable([out_dim], name='b')
+        conv_2d = tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv_2d_b = tf.nn.bias_add(conv_2d, b)
+        return tf.nn.dropout(conv_2d_b, keep_prob_)
+
 def deconv2d(x, in_dim, out_dim, training):
     with tf.name_scope("deconv2d"):
         stddev = np.sqrt(2 / (3 ** 2 * out_dim))
@@ -64,6 +73,17 @@ def deconv2d(x, in_dim, out_dim, training):
         #deconv_2d = tf.layers.batch_normalization(deconv_2d, training=training)
         deconv_2d = tf.nn.relu(deconv_2d)
         return deconv_2d
+
+def deconv2d_2(x, in_dim, out_dim, larger, training):
+    with tf.name_scope("deconv2d"):
+        stddev = np.sqrt(2 / (3 ** 2 * out_dim))
+        x_shape = tf.shape(x)
+        new_x = tf.image.resize_bilinear(x, size=[larger*x_shape[1], larger*x_shape[2]])
+        w = weight_variable([3, 3, in_dim, out_dim], stddev, name="w")
+        b = bias_variable([out_dim], name='b')
+        conv_2d = tf.nn.conv2d(new_x, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_b = tf.nn.bias_add(conv_2d, b)
+        return conv2d_b
 
 def inception_conv(x, in_dim, out_dim, keep_prob_, training):
     with tf.name_scope("conv2d"):
@@ -84,21 +104,10 @@ def inception_conv(x, in_dim, out_dim, keep_prob_, training):
         #conv2d_2 = tf.layers.batch_normalization(conv2d_2, training=training)
         conv2d_2 = tf.nn.relu(conv2d_2)
 
-        
         w3 = weight_variable([5, 5, out_dim, out_dim], stddev, name="w3")
         conv2d_3 = tf.nn.conv2d(conv2d_0, w3, strides=[1, 1, 1, 1], padding="SAME")
         #conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
         conv2d_3 = tf.nn.relu(conv2d_3)
-        '''
-        w3_1 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w3_1")
-        conv2d_3 = tf.nn.conv2d(conv2d_0, w3_1, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
-        conv2d_3 = tf.nn.relu(conv2d_3)
-        w3_2 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w3_2")
-        conv2d_3 = tf.nn.conv2d(conv2d_3, w3_2, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
-        conv2d_3 = tf.nn.relu(conv2d_3)
-        '''
 
         w4 = weight_variable([3, 3, out_dim, out_dim], stddev, name="w4")
         conv2d_4 = tf.nn.atrous_conv2d(conv2d_0, w4, rate=2, padding="SAME")
@@ -113,7 +122,7 @@ def inception_conv(x, in_dim, out_dim, keep_prob_, training):
         conv2d_input = tf.concat([conv2d_1, conv2d_2, conv2d_3, conv2d_4, conv2d_5], axis=3)
         w6 = weight_variable([1, 1, out_dim*5, out_dim], stddev, name="w6")
         conv2d_6 = tf.nn.conv2d(conv2d_input, w6, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_6 = tf.layers.batch_normalization(conv2d_6, training=training)
+        conv2d_6 = tf.layers.batch_normalization(conv2d_6, training=training)
         conv2d_6 = tf.nn.relu(conv2d_6)
 
         conv2d = conv2d_6 + conv2d_0
@@ -123,70 +132,6 @@ def inception_conv(x, in_dim, out_dim, keep_prob_, training):
         conv2d_output = tf.nn.relu(conv2d_output)
 
         return conv2d_output
-
-'''
-def inception_conv(x, in_dim, out_dim, keep_prob_, training):
-    #asym
-    with tf.name_scope("conv2d"):
-        stddev = np.sqrt(2 / (3 ** 2 * out_dim))
-
-        w0 = weight_variable([3, 3, in_dim, out_dim], stddev, name="w0")
-        conv2d_0 = tf.nn.conv2d(x, w0, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_0 = tf.layers.batch_normalization(conv2d_0, training=training)
-        conv2d_0 = tf.nn.relu(conv2d_0)
-
-        w1 = weight_variable([1, 1, out_dim, out_dim], stddev, name="w1")
-        conv2d_1 = tf.nn.conv2d(conv2d_0, w1, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_1 = tf.layers.batch_normalization(conv2d_1, training=training)
-        conv2d_1 = tf.nn.relu(conv2d_1)
-
-        w2_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w2_1")
-        conv2d_2 = tf.nn.conv2d(conv2d_0, w2_1, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_2 = tf.nn.relu(conv2d_2)
-        w2_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w2_2")
-        conv2d_2 = tf.nn.conv2d(conv2d_2, w2_2, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_2 = tf.layers.batch_normalization(conv2d_2, training=training)
-        conv2d_2 = tf.nn.relu(conv2d_2)
-
-        w3_1 = weight_variable([5, 1, out_dim, out_dim], stddev, name="w3_1")
-        conv2d_3 = tf.nn.conv2d(conv2d_0, w3_1, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_3 = tf.nn.relu(conv2d_3)
-        w3_2 = weight_variable([1, 5, out_dim, out_dim], stddev, name="w3_2")
-        conv2d_3 = tf.nn.conv2d(conv2d_3, w3_2, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_3 = tf.layers.batch_normalization(conv2d_3, training=training)
-        conv2d_3 = tf.nn.relu(conv2d_3)
-
-        w4_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w4_1")
-        conv2d_4 = tf.nn.atrous_conv2d(conv2d_0, w4_1, rate=2, padding="SAME")
-        conv2d_4 = tf.nn.relu(conv2d_4)
-        w4_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w4_2")
-        conv2d_4 = tf.nn.atrous_conv2d(conv2d_4, w4_2, rate=2, padding="SAME")
-        #conv2d_4 = tf.layers.batch_normalization(conv2d_4, training=training)
-        conv2d_4 = tf.nn.relu(conv2d_4)
-
-        w5_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w5_1")
-        conv2d_5 = tf.nn.atrous_conv2d(conv2d_0, w5_1, rate=4, padding="SAME")
-        conv2d_5 = tf.nn.relu(conv2d_5)
-        w5_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w5_2")
-        conv2d_5 = tf.nn.atrous_conv2d(conv2d_5, w5_2, rate=5, padding="SAME")
-        #conv2d_5 = tf.layers.batch_normalization(conv2d_5, training=training)
-        conv2d_5 = tf.nn.relu(conv2d_5)
-
-
-        conv2d_input = tf.concat([conv2d_1, conv2d_2, conv2d_3, conv2d_4, conv2d_5], axis=3)
-        w6 = weight_variable([1, 1, out_dim*5, out_dim], stddev, name="w6")
-        conv2d_6 = tf.nn.conv2d(conv2d_input, w6, strides=[1, 1, 1, 1], padding="SAME")
-        #conv2d_6 = tf.layers.batch_normalization(conv2d_6, training=training)
-        conv2d_6 = tf.nn.relu(conv2d_6)
-
-        conv2d = conv2d_6 + conv2d_0
-        w = weight_variable([3, 3, out_dim, out_dim], stddev, name="w")
-        conv2d_output = tf.nn.conv2d(conv2d, w, strides=[1, 1, 1, 1], padding="SAME")
-        conv2d_output = tf.layers.batch_normalization(conv2d_output, training=training)
-        conv2d_output = tf.nn.relu(conv2d_output)
-
-        return conv2d_output
-'''
 
 
 def dense_link(x, stride, out_dim):
@@ -220,9 +165,9 @@ def crop_and_concat(x1,x2):
 
 def pixel_wise_softmax(output_map):
     with tf.name_scope("pixel_wise_softmax"):
-        max_axis = tf.reduce_max(output_map, axis=3, keep_dims=True)
+        max_axis = tf.reduce_max(output_map, axis=3, keepdims=True)
         exponential_map = tf.exp(output_map - max_axis)
-        normalize = tf.reduce_sum(exponential_map, axis=3, keep_dims=True)
+        normalize = tf.reduce_sum(exponential_map, axis=3, keepdims=True)
         return exponential_map / normalize
 
 def cross_entropy(y_,output_map):

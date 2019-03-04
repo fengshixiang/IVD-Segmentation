@@ -6,9 +6,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scipy.ndimage.measurements as mear
 
-#a = ['01', '02', '03', '04', '05', '06', '07', '08',\
-#     '09', '10', '11', '12', '13', '14', '15', '16']
-a = ['01', '06', '11']
+a = ['01', '02', '03', '04', '05', '06', '07', '08',\
+     '09', '10', '11', '12', '13', '14', '15', '16']
+#a = ['01', '06', '11']
 
 def del_small_rigion(voxel):
     #for gt voxel, find the top 7 rigions and delete others
@@ -46,6 +46,7 @@ def _select_small_IVD(voxel):
         tmp_arr = np.where(voxel==i)
         for j in range(len(tmp_arr[0])):
             gt_IVDset_list[i-1].add(tmp_arr[0][j]*nx*ny+tmp_arr[1][j]*ny+tmp_arr[2][j])
+
     tmp_len = 100000
     tmp_arr = 0
     for i in range(0,7):
@@ -54,29 +55,53 @@ def _select_small_IVD(voxel):
             tmp_arr = np.where(voxel==(i+1))
     return tmp_arr
 
+def _select_small_IVD_2(voxel):
+    gt_IVDlen_dict = dict()
+    for i in range(1, 8):
+        tmp_arr = np.where(voxel==i)
+        gt_IVDlen_dict[i] = len(tmp_arr[0])
+
+    sorted_list = sorted(gt_IVDlen_dict.items(), key= lambda x:x[1])
+    small_1 = sorted_list[0][0]
+    small_2 = sorted_list[1][0]
+    tmp_arr_1 = np.where(voxel==small_1)
+    tmp_arr_2 = np.where(voxel==small_2)
+    x_min = min(min(tmp_arr_1[1]), min(tmp_arr_2[1]))
+    x_max = max(max(tmp_arr_1[1]), max(tmp_arr_2[1]))
+    y_min = min(min(tmp_arr_1[2]), min(tmp_arr_2[2]))
+    y_max = max(max(tmp_arr_1[2]), max(tmp_arr_2[2]))
+    return np.array([x_min, x_max, y_min, y_max])
+
+    
+
 for index in a:
-    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data/{}/{}_Labels.npy'.format(index, index)
-    #data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/2D_data_all_shape/{}'.format(index) 
-    data_save_address = '/DATA/data/sxfeng/Program/ensemble/greater/2D_data/{}'.format(index) 
+    npy_data_address = '/DATA/data/sxfeng/Program/ensemble/multiscale/npy_data/{}(2)/{}_Labels.npy'.format(index, index)
+    data_save_address = '/DATA/data/sxfeng/Program/ensemble/multiscale/2D_data/{}(2)'.format(index) 
+    #data_save_address = '/DATA/data/sxfeng/Program/ensemble/greater/2D_data/{}'.format(index) 
     voxel = np.load(npy_data_address)
     voxel = del_small_rigion(voxel)
 
     labeled_voxel, _ = mear.label(voxel)
-    smallest_arr = _select_small_IVD(labeled_voxel)
+    smallest_arr = _select_small_IVD_2(labeled_voxel)
     
-    print(len(smallest_arr[0]))
     point_list = np.where(voxel==1)
     x_min = min(point_list[1])
     x_max = max(point_list[1])
     y_min = min(point_list[2])
     y_max = max(point_list[2])
-    small_x_min = min(smallest_arr[1])
-    small_x_max = max(smallest_arr[1])
-    small_y_min = min(smallest_arr[2])
-    small_y_max = max(smallest_arr[2])
-    x_min = x_min-3 if x_min-3>0 else 0
+    #small_x_min = min(smallest_arr[1])
+    #small_x_max = max(smallest_arr[1])
+    #small_y_min = min(smallest_arr[2])
+    #small_y_max = max(smallest_arr[2])
+    small_x_min = smallest_arr[0]
+    small_x_max = smallest_arr[1]
+    small_y_min = smallest_arr[2]
+    small_y_max = smallest_arr[3]
+
+
+    x_min = x_min-3 if x_min-3>0 else 1
     x_max = x_max+3 if x_max+3<255 else 255
-    y_min = y_min-3 if y_min-3>0 else 0
+    y_min = y_min-3 if y_min-3>0 else 1
     y_max = y_max+3 if y_max+3<255 else 255
     arr = np.array([x_min, x_max, y_min, y_max, small_x_min, small_x_max, small_y_min, small_y_max])
     for addr in os.listdir(data_save_address):  # addr:0
