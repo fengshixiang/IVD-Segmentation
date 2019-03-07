@@ -36,105 +36,7 @@ from layers import (weight_variable, weight_variable_devonc, bias_variable,
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 para = Parameter()
 
-def create_conv_net(x, keep_prob, channels, n_class, layers=3, features_root=64, summaries=True):
-    logging.info(
-        "Layers {layers}, features {features}".format(
-            layers=layers,
-            features=features_root))
-
-    # Placeholder for the input image
-    with tf.name_scope("preprocessing"):
-        nx = tf.shape(x)[1]
-        ny = tf.shape(x)[2]
-        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
-        in_node = x_image
-        batch_size = tf.shape(x_image)[0]
-
-    weights = []
-    biases = []
-    convs = []
-    pools = OrderedDict()
-    deconv = OrderedDict()
-    dw_h_convs = OrderedDict()
-    up_h_convs = OrderedDict()
-
-    # down layers
-    for layer in range(0, layers):
-        with tf.name_scope("down_conv_{}".format(str(layer))):
-            features = 2 ** layer * features_root
-            if layer == 0:
-                conv1 = conv2d(in_node, channels, features, keep_prob)
-            else:
-                conv1 = conv2d(in_node, features//2, features, keep_prob)
-
-            tmp_h_conv = tf.nn.relu(conv1)
-            conv2 = conv2d(tmp_h_conv, features, features, keep_prob)
-            dw_h_convs[layer] = tf.nn.relu(conv2)
-
-            #weights.append((w1, w2))
-            #biases.append((b1, b2))
-            convs.append((conv1, conv2))
-
-            if layer < layers - 1:
-                pools[layer] = max_pool(dw_h_convs[layer], 2)
-                in_node = pools[layer]
-
-    in_node = dw_h_convs[layers - 1]
-
-    # up layers
-    for layer in range(layers - 2, -1, -1):
-        with tf.name_scope("up_conv_{}".format(str(layer))):
-            features = 2 ** (layer + 1) * features_root
-            h_deconv = tf.nn.relu(deconv2d(in_node, features, features//2))
-            h_deconv_concat = tf.concat([dw_h_convs[layer], h_deconv], 3)
-            deconv[layer] = h_deconv_concat
-
-            conv1 = conv2d(h_deconv_concat, features, features//2, keep_prob)
-            h_conv = tf.nn.relu(conv1)
-            conv2 = conv2d(h_conv, features//2, features//2, keep_prob)
-            in_node = tf.nn.relu(conv2)
-            up_h_convs[layer] = in_node
-
-            #weights.append((w1, w2))
-            #biases.append((b1, b2))
-            convs.append((conv1, conv2))
-
-    # Output Map
-    with tf.name_scope("output_map"):
-        conv = conv2d(in_node, features_root, n_class, tf.constant(1.0))
-        output_map = tf.nn.relu(conv)
-        up_h_convs["out"] = output_map
-
-    if summaries:
-        with tf.name_scope("summaries"):
-            for i, (c1, c2) in enumerate(convs):
-                tf.summary.image('summary_conv_%02d_01' % i, get_image_summary(c1))
-                tf.summary.image('summary_conv_%02d_02' % i, get_image_summary(c2))
-
-            for k in pools.keys():
-                tf.summary.image('summary_pool_%02d' % k, get_image_summary(pools[k]))
-
-            for k in deconv.keys():
-                tf.summary.image('summary_deconv_concat_%02d' % k, get_image_summary(deconv[k]))
-
-            for k in dw_h_convs.keys():
-                tf.summary.histogram("dw_convolution_%02d" % k + '/activations', dw_h_convs[k])
-
-            for k in up_h_convs.keys():
-                tf.summary.histogram("up_convolution_%s" % k + '/activations', up_h_convs[k])
-
-    variables = []
-    for w1, w2 in weights:
-        variables.append(w1)
-        variables.append(w2)
-
-    for b1, b2 in biases:
-        variables.append(b1)
-        variables.append(b2)
-
-    return output_map, variables
-
-def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, summaries=True, training=True):
+def create_IVD_net(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
     logging.info(
         "Layers {layers}, features {features}".format(
             layers=layers,
@@ -330,7 +232,7 @@ def create_IVD_net(x, keep_prob, channels, n_class, layers=3, features_root=32, 
 
     return output_map, variables
 
-def create_edge_net(x, keep_prob, channels, n_class, layers=3, features_root=32, summaries=True, training=True):
+def create_edge_net(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
     logging.info(
         "Layers {layers}, features {features}".format(
             layers=layers,
@@ -530,6 +432,883 @@ def create_edge_net(x, keep_prob, channels, n_class, layers=3, features_root=32,
 
     return [output_map, up_h_convs["out_1"], up_h_convs["out_2"], up_h_convs["out_3"]], variables
 
+def create_edge_net_2(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
+    logging.info(
+        "Layers {layers}, features {features}".format(
+            layers=layers,
+            features=features_root))
+
+    # Placeholder for the input image
+    with tf.name_scope("preprocessing"):
+        nx = tf.shape(x)[1]
+        ny = tf.shape(x)[2]
+        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
+        in_node = x_image
+        batch_size = tf.shape(x_image)[0]
+
+    weights = []
+    biases = []
+    fat_inputs = OrderedDict();     inn_inputs = OrderedDict();     wat_inputs = OrderedDict();     opp_inputs = OrderedDict();
+    fat_pools = OrderedDict();      inn_pools = OrderedDict();      wat_pools = OrderedDict();      opp_pools = OrderedDict()
+    fat_dw_h_convs = OrderedDict(); inn_dw_h_convs = OrderedDict(); wat_dw_h_convs = OrderedDict(); opp_dw_h_convs = OrderedDict();
+    deconv = OrderedDict()
+    up_h_convs = OrderedDict()
+
+    # down layers
+    for layer in range(0, layers):
+        with tf.name_scope("down_conv_{}".format(str(layer))):
+            features = 2 ** layer * features_root
+            if layer==0:
+                with tf.name_scope("fat"):
+                    in_node = tf.reshape(x_image[..., 0],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.reshape(x_image[..., 1],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.reshape(x_image[..., 2],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.reshape(x_image[..., 3],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==1:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[0], wat_pools[0], opp_pools[0], fat_pools[0]], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==2:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[1], wat_pools[1], opp_pools[1], fat_pools[1]], 3)
+                    tmp_node = cropCenter(inn_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[1], opp_pools[1], fat_pools[1], inn_pools[1]], 3)
+                    tmp_node = cropCenter(wat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[1], fat_pools[1], inn_pools[1], wat_pools[1]], 3)
+                    tmp_node = cropCenter(opp_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==3:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[2], inn_pools[2], wat_pools[2], opp_pools[2]], 3)
+                    tmp_node = cropCenter(fat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[2], wat_pools[2], opp_pools[2], fat_pools[2]], 3)
+                    tmp_node = cropCenter(inn_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[2], opp_pools[2], fat_pools[2], inn_pools[2]], 3)
+                    tmp_node = cropCenter(wat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[2], fat_pools[2], inn_pools[2], wat_pools[2]], 3)
+                    tmp_node = cropCenter(opp_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==4:
+                in_node = tf.concat([fat_pools[3], inn_pools[3], wat_pools[3], opp_pools[3]], 3)
+                tmp_node = cropCenter(fat_inputs[3], in_node)
+                in_node = tf.concat([in_node, tmp_node], 3)
+                conv = inception_conv(in_node, features_root*60, features, keep_prob, training)
+                up_h_convs[layer] = conv
+
+    in_node = up_h_convs[layers-1]
+    # up layers
+    for layer in range(layers - 2, -1, -1):
+        with tf.name_scope("up_conv_{}".format(str(layer))):
+            features = 2 ** (layer + 1) * features_root
+            h_deconv = deconv2d(in_node, features, features//2, training)
+            h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
+                              wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
+            deconv[layer] = h_deconv_concat
+            in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
+            up_h_convs[layer] = in_node
+
+    # output
+    stddev = np.sqrt(2 / (3 ** 2 * features_root))
+    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
+    b = bias_variable([2], name="b")
+    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
+
+    # RCF
+    for layer in range(layers - 2, 0, -1):
+        with tf.name_scope("output_{}".format(str(layer))):
+            in_node = up_h_convs[layer]
+            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
+            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
+            up_h_convs["out_{}".format(layer)] = deconv
+    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"], up_h_convs["out_3"]], 3)
+    w_out = weight_variable([1, 1, 8, 2], stddev, name="w_out")
+    b_out = bias_variable([2], name="b_out")
+    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
+
+    if summaries:
+        with tf.name_scope("summaries"):
+            for k in up_h_convs.keys():
+                tf.summary.image('up_h_convs_%s' % k, get_image_summary(up_h_convs[k]))
+            tf.summary.image("output_map", get_image_summary(output_map))
+
+    variables = []
+    for w1, w2 in weights:
+        variables.append(w1)
+        variables.append(w2)
+
+    for b1, b2 in biases:
+        variables.append(b1)
+        variables.append(b2)
+
+    return [output_map, up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"], up_h_convs["out_3"]], variables
+
+def create_edge_net_3(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
+    # delete  up_h_convs["out_3"]
+    logging.info(
+        "Layers {layers}, features {features}".format(
+            layers=layers,
+            features=features_root))
+
+    # Placeholder for the input image
+    with tf.name_scope("preprocessing"):
+        nx = tf.shape(x)[1]
+        ny = tf.shape(x)[2]
+        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
+        in_node = x_image
+        batch_size = tf.shape(x_image)[0]
+
+    weights = []
+    biases = []
+    fat_inputs = OrderedDict();     inn_inputs = OrderedDict();     wat_inputs = OrderedDict();     opp_inputs = OrderedDict();
+    fat_pools = OrderedDict();      inn_pools = OrderedDict();      wat_pools = OrderedDict();      opp_pools = OrderedDict()
+    fat_dw_h_convs = OrderedDict(); inn_dw_h_convs = OrderedDict(); wat_dw_h_convs = OrderedDict(); opp_dw_h_convs = OrderedDict();
+    deconv = OrderedDict()
+    up_h_convs = OrderedDict()
+
+    # down layers
+    for layer in range(0, layers):
+        with tf.name_scope("down_conv_{}".format(str(layer))):
+            features = 2 ** layer * features_root
+            if layer==0:
+                with tf.name_scope("fat"):
+                    in_node = tf.reshape(x_image[..., 0],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.reshape(x_image[..., 1],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.reshape(x_image[..., 2],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.reshape(x_image[..., 3],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==1:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[0], wat_pools[0], opp_pools[0], fat_pools[0]], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==2:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[1], wat_pools[1], opp_pools[1], fat_pools[1]], 3)
+                    tmp_node = cropCenter(inn_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[1], opp_pools[1], fat_pools[1], inn_pools[1]], 3)
+                    tmp_node = cropCenter(wat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[1], fat_pools[1], inn_pools[1], wat_pools[1]], 3)
+                    tmp_node = cropCenter(opp_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==3:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[2], inn_pools[2], wat_pools[2], opp_pools[2]], 3)
+                    tmp_node = cropCenter(fat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[2], wat_pools[2], opp_pools[2], fat_pools[2]], 3)
+                    tmp_node = cropCenter(inn_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[2], opp_pools[2], fat_pools[2], inn_pools[2]], 3)
+                    tmp_node = cropCenter(wat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[2], fat_pools[2], inn_pools[2], wat_pools[2]], 3)
+                    tmp_node = cropCenter(opp_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==4:
+                in_node = tf.concat([fat_pools[3], inn_pools[3], wat_pools[3], opp_pools[3]], 3)
+                tmp_node = cropCenter(fat_inputs[3], in_node)
+                in_node = tf.concat([in_node, tmp_node], 3)
+                conv = inception_conv(in_node, features_root*60, features, keep_prob, training)
+                up_h_convs[layer] = conv
+
+    in_node = up_h_convs[layers-1]
+    # up layers
+    for layer in range(layers - 2, -1, -1):
+        with tf.name_scope("up_conv_{}".format(str(layer))):
+            features = 2 ** (layer + 1) * features_root
+            h_deconv = deconv2d(in_node, features, features//2, training)
+            h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
+                              wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
+            deconv[layer] = h_deconv_concat
+            in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
+            up_h_convs[layer] = in_node
+
+    # output
+    stddev = np.sqrt(2 / (3 ** 2 * features_root))
+    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
+    b = bias_variable([2], name="b")
+    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
+
+    # RCF
+    for layer in range(2, 0, -1):
+        with tf.name_scope("output_{}".format(str(layer))):
+            in_node = up_h_convs[layer]
+            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
+            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
+            up_h_convs["out_{}".format(layer)] = deconv
+    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"]], 3)
+    w_out = weight_variable([1, 1, 6, 2], stddev, name="w_out")
+    b_out = bias_variable([2], name="b_out")
+    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
+
+    if summaries:
+        with tf.name_scope("summaries"):
+            for k in up_h_convs.keys():
+                tf.summary.image('up_h_convs_%s' % k, get_image_summary(up_h_convs[k]))
+            tf.summary.image("output_map", get_image_summary(output_map))
+
+    variables = []
+    for w1, w2 in weights:
+        variables.append(w1)
+        variables.append(w2)
+
+    for b1, b2 in biases:
+        variables.append(b1)
+        variables.append(b2)
+
+    return [output_map, up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"]], variables
+
+def create_edge_net_4(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
+    # delete  up_h_convs["out_2"]
+    logging.info(
+        "Layers {layers}, features {features}".format(
+            layers=layers,
+            features=features_root))
+
+    # Placeholder for the input image
+    with tf.name_scope("preprocessing"):
+        nx = tf.shape(x)[1]
+        ny = tf.shape(x)[2]
+        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
+        in_node = x_image
+        batch_size = tf.shape(x_image)[0]
+
+    weights = []
+    biases = []
+    fat_inputs = OrderedDict();     inn_inputs = OrderedDict();     wat_inputs = OrderedDict();     opp_inputs = OrderedDict();
+    fat_pools = OrderedDict();      inn_pools = OrderedDict();      wat_pools = OrderedDict();      opp_pools = OrderedDict()
+    fat_dw_h_convs = OrderedDict(); inn_dw_h_convs = OrderedDict(); wat_dw_h_convs = OrderedDict(); opp_dw_h_convs = OrderedDict();
+    deconv = OrderedDict()
+    up_h_convs = OrderedDict()
+
+    # down layers
+    for layer in range(0, layers):
+        with tf.name_scope("down_conv_{}".format(str(layer))):
+            features = 2 ** layer * features_root
+            if layer==0:
+                with tf.name_scope("fat"):
+                    in_node = tf.reshape(x_image[..., 0],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.reshape(x_image[..., 1],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.reshape(x_image[..., 2],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.reshape(x_image[..., 3],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==1:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[0], wat_pools[0], opp_pools[0], fat_pools[0]], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==2:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[1], wat_pools[1], opp_pools[1], fat_pools[1]], 3)
+                    tmp_node = cropCenter(inn_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[1], opp_pools[1], fat_pools[1], inn_pools[1]], 3)
+                    tmp_node = cropCenter(wat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[1], fat_pools[1], inn_pools[1], wat_pools[1]], 3)
+                    tmp_node = cropCenter(opp_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==3:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[2], inn_pools[2], wat_pools[2], opp_pools[2]], 3)
+                    tmp_node = cropCenter(fat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[2], wat_pools[2], opp_pools[2], fat_pools[2]], 3)
+                    tmp_node = cropCenter(inn_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[2], opp_pools[2], fat_pools[2], inn_pools[2]], 3)
+                    tmp_node = cropCenter(wat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[2], fat_pools[2], inn_pools[2], wat_pools[2]], 3)
+                    tmp_node = cropCenter(opp_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    #opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==4:
+                in_node = tf.concat([fat_pools[3], inn_pools[3], wat_pools[3], opp_pools[3]], 3)
+                tmp_node = cropCenter(fat_inputs[3], in_node)
+                in_node = tf.concat([in_node, tmp_node], 3)
+                conv = inception_conv(in_node, features_root*60, features, keep_prob, training)
+                up_h_convs[layer] = conv
+
+    in_node = up_h_convs[layers-1]
+    # up layers
+    for layer in range(layers - 2, -1, -1):
+        with tf.name_scope("up_conv_{}".format(str(layer))):
+            features = 2 ** (layer + 1) * features_root
+            h_deconv = deconv2d(in_node, features, features//2, training)
+            h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
+                              wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
+            deconv[layer] = h_deconv_concat
+            in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
+            up_h_convs[layer] = in_node
+
+    # output
+    stddev = np.sqrt(2 / (3 ** 2 * features_root))
+    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
+    b = bias_variable([2], name="b")
+    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
+
+    # RCF
+    for layer in range(1, 0, -1):
+        with tf.name_scope("output_{}".format(str(layer))):
+            in_node = up_h_convs[layer]
+            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
+            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
+            up_h_convs["out_{}".format(layer)] = deconv
+    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
+    w_out = weight_variable([1, 1, 4, 2], stddev, name="w_out")
+    b_out = bias_variable([2], name="b_out")
+    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
+
+    if summaries:
+        with tf.name_scope("summaries"):
+            for k in up_h_convs.keys():
+                tf.summary.image('up_h_convs_%s' % k, get_image_summary(up_h_convs[k]))
+            tf.summary.image("output_map", get_image_summary(output_map))
+
+    variables = []
+    for w1, w2 in weights:
+        variables.append(w1)
+        variables.append(w2)
+
+    for b1, b2 in biases:
+        variables.append(b1)
+        variables.append(b2)
+
+    return [output_map, up_h_convs["out"], up_h_convs["out_1"]], variables
+
+def edge_net_4layer(x, keep_prob, channels, n_class, layers=4, features_root=32, summaries=True, training=True):
+    logging.info(
+        "Layers {layers}, features {features}".format(
+            layers=layers,
+            features=features_root))
+
+    # Placeholder for the input image
+    with tf.name_scope("preprocessing"):
+        nx = tf.shape(x)[1]
+        ny = tf.shape(x)[2]
+        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
+        in_node = x_image
+        batch_size = tf.shape(x_image)[0]
+
+    weights = []
+    biases = []
+    fat_inputs = OrderedDict();     inn_inputs = OrderedDict();     wat_inputs = OrderedDict();     opp_inputs = OrderedDict();
+    fat_pools = OrderedDict();      inn_pools = OrderedDict();      wat_pools = OrderedDict();      opp_pools = OrderedDict()
+    fat_dw_h_convs = OrderedDict(); inn_dw_h_convs = OrderedDict(); wat_dw_h_convs = OrderedDict(); opp_dw_h_convs = OrderedDict();
+    deconv = OrderedDict()
+    up_h_convs = OrderedDict()
+
+    # down layers
+    for layer in range(0, 4):
+        with tf.name_scope("down_conv_{}".format(str(layer))):
+            features = 2 ** layer * features_root
+            if layer==0:
+                with tf.name_scope("fat"):
+                    in_node = tf.reshape(x_image[..., 0],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.reshape(x_image[..., 1],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.reshape(x_image[..., 2],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.reshape(x_image[..., 3],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==1:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[0], wat_pools[0], opp_pools[0], fat_pools[0]], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==2:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[1], wat_pools[1], opp_pools[1], fat_pools[1]], 3)
+                    tmp_node = cropCenter(inn_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[1], opp_pools[1], fat_pools[1], inn_pools[1]], 3)
+                    tmp_node = cropCenter(wat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[1], fat_pools[1], inn_pools[1], wat_pools[1]], 3)
+                    tmp_node = cropCenter(opp_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==3:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[2], inn_pools[2], wat_pools[2], opp_pools[2]], 3)
+                    tmp_node = cropCenter(fat_inputs[2], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    conv = inception_conv(in_node, features_root*28, features, keep_prob, training)
+                    up_h_convs[layer] = conv
+
+    in_node = up_h_convs[4-1]
+    # up layers
+    for layer in range(4 - 2, -1, -1):
+        with tf.name_scope("up_conv_{}".format(str(layer))):
+            features = 2 ** (layer + 1) * features_root
+            h_deconv = deconv2d(in_node, features, features//2, training)
+            h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
+                              wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
+            deconv[layer] = h_deconv_concat
+            in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
+            up_h_convs[layer] = in_node
+
+    # output
+    stddev = np.sqrt(2 / (3 ** 2 * features_root))
+    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
+    b = bias_variable([2], name="b")
+    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
+    
+    # RCF
+    for layer in range(1, 0, -1):
+        with tf.name_scope("output_{}".format(str(layer))):
+            in_node = up_h_convs[layer]
+            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
+            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
+            up_h_convs["out_{}".format(layer)] = deconv
+    
+    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
+    w_out = weight_variable([1, 1, 4, 2], stddev, name="w_out")
+    b_out = bias_variable([2], name="b_out")
+    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
+    
+    if summaries:
+        with tf.name_scope("summaries"):
+            for k in up_h_convs.keys():
+                tf.summary.image('up_h_convs_%s' % k, get_image_summary(up_h_convs[k]))
+            tf.summary.image("output_map", get_image_summary(output_map))
+
+            for k in fat_dw_h_convs.keys():
+                tf.summary.histogram("dw_convolution_%02d" % k + '/activations', fat_dw_h_convs[k])
+
+    variables = []
+    for w1, w2 in weights:
+        variables.append(w1)
+        variables.append(w2)
+
+    for b1, b2 in biases:
+        variables.append(b1)
+        variables.append(b2)
+
+    return [output_map, up_h_convs["out"], up_h_convs["out_1"]], variables
+
+def edge_net_3layer(x, keep_prob, channels, n_class, layers=3, features_root=32, summaries=True, training=True):
+    logging.info(
+        "Layers {layers}, features {features}".format(
+            layers=layers,
+            features=features_root))
+
+    # Placeholder for the input image
+    with tf.name_scope("preprocessing"):
+        nx = tf.shape(x)[1]
+        ny = tf.shape(x)[2]
+        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
+        in_node = x_image
+        batch_size = tf.shape(x_image)[0]
+
+    weights = []
+    biases = []
+    fat_inputs = OrderedDict();     inn_inputs = OrderedDict();     wat_inputs = OrderedDict();     opp_inputs = OrderedDict();
+    fat_pools = OrderedDict();      inn_pools = OrderedDict();      wat_pools = OrderedDict();      opp_pools = OrderedDict()
+    fat_dw_h_convs = OrderedDict(); inn_dw_h_convs = OrderedDict(); wat_dw_h_convs = OrderedDict(); opp_dw_h_convs = OrderedDict();
+    deconv = OrderedDict()
+    up_h_convs = OrderedDict()
+
+    # down layers
+    for layer in range(0, 3):
+        with tf.name_scope("down_conv_{}".format(str(layer))):
+            features = 2 ** layer * features_root
+            if layer==0:
+                with tf.name_scope("fat"):
+                    in_node = tf.reshape(x_image[..., 0],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.reshape(x_image[..., 1],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.reshape(x_image[..., 2],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.reshape(x_image[..., 3],[batch_size, nx, ny, 1])
+                    conv = inception_conv(in_node, 1, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==1:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[0], inn_pools[0], wat_pools[0], opp_pools[0]], 3)
+                    fat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    fat_dw_h_convs[layer] = conv
+                    fat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("inn"):
+                    in_node = tf.concat([inn_pools[0], wat_pools[0], opp_pools[0], fat_pools[0]], 3)
+                    inn_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    inn_dw_h_convs[layer] = conv
+                    inn_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("wat"):
+                    in_node = tf.concat([wat_pools[0], opp_pools[0], fat_pools[0], inn_pools[0]], 3)
+                    wat_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    wat_dw_h_convs[layer] = conv
+                    wat_pools[layer] = max_pool(conv, 2)
+                with tf.name_scope("opp"):
+                    in_node = tf.concat([opp_pools[0], fat_pools[0], inn_pools[0], wat_pools[0]], 3)
+                    opp_inputs[layer] = in_node
+                    conv = inception_conv(in_node, features_root*4, features, keep_prob, training)
+                    opp_dw_h_convs[layer] = conv
+                    opp_pools[layer] = max_pool(conv, 2)
+            elif layer==2:
+                with tf.name_scope("fat"):
+                    in_node = tf.concat([fat_pools[1], inn_pools[1], wat_pools[1], opp_pools[1]], 3)
+                    tmp_node = cropCenter(fat_inputs[1], in_node)
+                    in_node = tf.concat([in_node, tmp_node], 3)
+                    conv = inception_conv(in_node, features_root*12, features, keep_prob, training)
+                    up_h_convs[layer] = conv
+
+    in_node = up_h_convs[3-1]
+    # up layers
+    for layer in range(3 - 2, -1, -1):
+        with tf.name_scope("up_conv_{}".format(str(layer))):
+            features = 2 ** (layer + 1) * features_root
+            h_deconv = deconv2d(in_node, features, features//2, training)
+            h_deconv_concat = (h_deconv + fat_dw_h_convs[layer] + inn_dw_h_convs[layer] +\
+                              wat_dw_h_convs[layer] + opp_dw_h_convs[layer])/5
+
+            deconv[layer] = h_deconv_concat
+            in_node = inception_conv(h_deconv_concat, features//2, features//2, keep_prob, training)
+            up_h_convs[layer] = in_node
+
+    # output
+    stddev = np.sqrt(2 / (3 ** 2 * features_root))
+    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
+    b = bias_variable([2], name="b")
+    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
+    
+    # RCF
+    for layer in range(1, 0, -1):
+        with tf.name_scope("output_{}".format(str(layer))):
+            in_node = up_h_convs[layer]
+            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
+            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
+            up_h_convs["out_{}".format(layer)] = deconv
+            
+    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
+    w_out = weight_variable([1, 1, 4, 2], stddev, name="w_out")
+    b_out = bias_variable([2], name="b_out")
+    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
+    
+    if summaries:
+        with tf.name_scope("summaries"):
+            for k in up_h_convs.keys():
+                tf.summary.image('up_h_convs_%s' % k, get_image_summary(up_h_convs[k]))
+            tf.summary.image("output_map", get_image_summary(output_map))
+
+            for k in fat_dw_h_convs.keys():
+                tf.summary.histogram("dw_convolution_%02d" % k + '/activations', fat_dw_h_convs[k])
+
+    variables = []
+    for w1, w2 in weights:
+        variables.append(w1)
+        variables.append(w2)
+
+    for b1, b2 in biases:
+        variables.append(b1)
+        variables.append(b2)
+
+    return [output_map, up_h_convs["out"], up_h_convs["out_1"]], variables
 
 class Unet(object):
     """
@@ -552,8 +1331,8 @@ class Unet(object):
         self.z = tf.placeholder(tf.int32, shape=[None, 8], name="z")
         self.keep_prob = tf.placeholder(tf.float32, name="dropout_probability")  # dropout (keep probability)
 
-        #logits, self.variables= create_conv_net(self.x, self.keep_prob, channels, n_class, **kwargs)
-        logits, self.variables= create_edge_net(self.x, self.keep_prob, channels, n_class, **kwargs)
+        #logits, self.variables= create_edge_net_4(self.x, self.keep_prob, channels, n_class, **kwargs)
+        logits, self.variables= edge_net_3layer(self.x, self.keep_prob, channels, n_class, **kwargs)
         self.cost = self._get_cost(logits, cost, cost_kwargs)
 
         self.gradients_node = tf.gradients(self.cost, self.variables)
@@ -907,8 +1686,8 @@ class Trainer(object):
                         norm_gradients = [np.linalg.norm(gradient) for gradient in avg_gradients]
                         self.norm_gradients_node.assign(norm_gradients).eval()
 
-                    #if step % display_step == 0:
-                    #    self.output_minibatch_stats(sess, summary_writer, step, batch_x, batch_y)
+                    if step % display_step == 0:
+                        self.output_minibatch_stats(sess, summary_writer, step, batch_x, batch_y, range_arr)
 
                     total_loss += loss
 

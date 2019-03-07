@@ -16,7 +16,7 @@ class Parameter(object):
         self.layers=5
         self.features_root=32
         self.batch_size=4
-        self.training_iters=234
+        self.training_iters=117
         self.epochs=100
         self.display_step=117     #number of steps till outputting stats
         self.dropout=1.0
