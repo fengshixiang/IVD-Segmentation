@@ -72,38 +72,47 @@ def _select_small_IVD_2(voxel):
     y_max = max(max(tmp_arr_1[2]), max(tmp_arr_2[2]))
     return np.array([x_min, x_max, y_min, y_max])
 
-    
+def _region_of_IVD(voxel):
+    gt_IVDy_dict = dict()
+    for i in range(1, 8):
+        tmp_arr = np.where(voxel==i)
+        y_min = min(tmp_arr[2])
+        gt_IVDy_dict[i] = y_min
+    sorted_list = sorted(gt_IVDy_dict.items(), key=lambda x:x[1])
+    list = []
+    for i in range(7):
+        index = sorted_list[i][0]
+        tmp_arr = np.where(voxel==index)
+        x_min = min(tmp_arr[1])
+        x_max = max(tmp_arr[1])
+        y_min = min(tmp_arr[2])
+        y_max = max(tmp_arr[2])
+        list.append([x_min, x_max, y_min, y_max])
+    return list
+
 
 for index in a:
-    npy_data_address = '/DATA/data/sxfeng/Program/ensemble/multiscale/npy_data/{}(2)/{}_Labels.npy'.format(index, index)
-    data_save_address = '/DATA/data/sxfeng/Program/ensemble/multiscale/2D_data/{}(2)'.format(index) 
-    #data_save_address = '/DATA/data/sxfeng/Program/ensemble/greater/2D_data/{}'.format(index) 
+    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data/{}/{}_Labels.npy'.format(index, index)
+    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/each_IVD_region/{}'.format(index) 
     voxel = np.load(npy_data_address)
     voxel = del_small_rigion(voxel)
 
     labeled_voxel, _ = mear.label(voxel)
-    smallest_arr = _select_small_IVD_2(labeled_voxel)
     
     point_list = np.where(voxel==1)
     x_min = min(point_list[1])
     x_max = max(point_list[1])
     y_min = min(point_list[2])
     y_max = max(point_list[2])
-    #small_x_min = min(smallest_arr[1])
-    #small_x_max = max(smallest_arr[1])
-    #small_y_min = min(smallest_arr[2])
-    #small_y_max = max(smallest_arr[2])
-    small_x_min = smallest_arr[0]
-    small_x_max = smallest_arr[1]
-    small_y_min = smallest_arr[2]
-    small_y_max = smallest_arr[3]
 
-
+    region_list = _region_of_IVD(labeled_voxel)
+    '''
     x_min = x_min-3 if x_min-3>0 else 1
     x_max = x_max+3 if x_max+3<255 else 255
     y_min = y_min-3 if y_min-3>0 else 1
     y_max = y_max+3 if y_max+3<255 else 255
-    arr = np.array([x_min, x_max, y_min, y_max, small_x_min, small_x_max, small_y_min, small_y_max])
+    '''
+    arr = np.array(region_list)
     for addr in os.listdir(data_save_address):  # addr:0
         tmp_addr = os.path.join(data_save_address, addr)  #2D_data_all_shape/01/0
         for tmp in os.listdir(tmp_addr):
