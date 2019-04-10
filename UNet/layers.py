@@ -139,6 +139,81 @@ def inception_conv(x, in_dim, out_dim, keep_prob_, training):
 
         return conv2d_output
 
+def inception_conv_asym(x, in_dim, out_dim, keep_prob_, training):
+    #asym
+    with tf.name_scope("conv2d"):
+        stddev = np.sqrt(2 / (3 ** 2 * out_dim))
+
+        w0 = weight_variable([3, 3, in_dim, out_dim], stddev, name="w0")
+        conv2d_0 = tf.nn.conv2d(x, w0, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_0 = tf.layers.batch_normalization(conv2d_0, training=training, name=w0.name[:-2] + '/bn')
+        conv2d_0 = tf.nn.relu(conv2d_0)
+
+        w1 = weight_variable([1, 1, out_dim, out_dim], stddev, name="w1")
+        conv2d_1 = tf.nn.conv2d(conv2d_0, w1, strides=[1, 1, 1, 1], padding="SAME")
+        b1 = bias_variable([out_dim], name="b1")
+        conv2d_1 = tf.nn.bias_add(conv2d_1, b1)
+        conv2d_1 = tf.nn.relu(conv2d_1)
+
+        w2_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w2_1")
+        conv2d_2 = tf.nn.conv2d(conv2d_0, w2_1, strides=[1, 1, 1, 1], padding="SAME")
+        b2_1 = bias_variable([out_dim], name="b2_1")
+        conv2d_2 = tf.nn.bias_add(conv2d_2, b2_1)
+        conv2d_2 = tf.nn.relu(conv2d_2)
+        w2_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w2_2")
+        conv2d_2 = tf.nn.conv2d(conv2d_2, w2_2, strides=[1, 1, 1, 1], padding="SAME")
+        b2_2 = bias_variable([out_dim], name="b2_2")
+        conv2d_2 = tf.nn.bias_add(conv2d_2, b2_2)
+        conv2d_2 = tf.nn.relu(conv2d_2)
+
+        w3_1 = weight_variable([5, 1, out_dim, out_dim], stddev, name="w3_1")
+        conv2d_3 = tf.nn.conv2d(conv2d_0, w3_1, strides=[1, 1, 1, 1], padding="SAME")
+        b3_1 = bias_variable([out_dim], name="b3_1")
+        conv2d_3 = tf.nn.bias_add(conv2d_3, b3_1)
+        conv2d_3 = tf.nn.relu(conv2d_3)
+        w3_2 = weight_variable([1, 5, out_dim, out_dim], stddev, name="w3_2")
+        conv2d_3 = tf.nn.conv2d(conv2d_3, w3_2, strides=[1, 1, 1, 1], padding="SAME")
+        b3_2 = bias_variable([out_dim], name="b3_2")
+        conv2d_3 = tf.nn.bias_add(conv2d_3, b3_2)
+        conv2d_3 = tf.nn.relu(conv2d_3)
+
+        w4_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w4_1")
+        conv2d_4 = tf.nn.atrous_conv2d(conv2d_0, w4_1, rate=2, padding="SAME")
+        b4_1 = bias_variable([out_dim], name="b4_1")
+        conv2d_4 = tf.nn.bias_add(conv2d_4, b4_1)
+        conv2d_4 = tf.nn.relu(conv2d_4)
+        w4_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w4_2")
+        conv2d_4 = tf.nn.atrous_conv2d(conv2d_4, w4_2, rate=2, padding="SAME")
+        b4_2 = bias_variable([out_dim], name="b4_2")
+        conv2d_4 = tf.nn.bias_add(conv2d_4, b4_2)
+        conv2d_4 = tf.nn.relu(conv2d_4)
+
+        w5_1 = weight_variable([3, 1, out_dim, out_dim], stddev, name="w5_1")
+        conv2d_5 = tf.nn.atrous_conv2d(conv2d_0, w5_1, rate=4, padding="SAME")
+        b5_1 = bias_variable([out_dim], name="b5_1")
+        conv2d_5 = tf.nn.bias_add(conv2d_5, b5_1)
+        conv2d_5 = tf.nn.relu(conv2d_5)
+        w5_2 = weight_variable([1, 3, out_dim, out_dim], stddev, name="w5_2")
+        conv2d_5 = tf.nn.atrous_conv2d(conv2d_5, w5_2, rate=4, padding="SAME")
+        b5_2 = bias_variable([out_dim], name="b5_2")
+        conv2d_5 = tf.nn.bias_add(conv2d_5, b5_2)
+        conv2d_5 = tf.nn.relu(conv2d_5)
+
+
+        conv2d_input = tf.concat([conv2d_1, conv2d_2, conv2d_3, conv2d_4, conv2d_5], axis=3)
+        w6 = weight_variable([1, 1, out_dim*5, out_dim], stddev, name="w6")
+        conv2d_6 = tf.nn.conv2d(conv2d_input, w6, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_6 = tf.layers.batch_normalization(conv2d_6, training=training)
+        conv2d_6 = tf.nn.relu(conv2d_6)
+
+        conv2d = conv2d_6 + conv2d_0
+        w = weight_variable([3, 3, out_dim, out_dim], stddev, name="w")
+        conv2d_output = tf.nn.conv2d(conv2d, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_output = tf.layers.batch_normalization(conv2d_output, training=training)
+        conv2d_output = tf.nn.relu(conv2d_output)
+
+        return conv2d_output
+
 def dense_link(x, stride, out_dim):
     with tf.name_scope("dense_link"):
         stddev = np.sqrt(2 / (3 ** 2 * out_dim))
@@ -150,6 +225,18 @@ def dense_link(x, stride, out_dim):
 def max_pool(x, n):
     return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
 
+'''
+def max_pool(x, n, in_dim):
+    ch = tf.shape(x)[3]
+    out_1 = tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
+    stddev = np.sqrt(2 / (3 ** 2 * in_dim))
+    w = weight_variable([3, 3, in_dim, in_dim], stddev, name="w")
+    b = bias_variable([in_dim], name="b")
+    out_2 = tf.nn.bias_add(tf.nn.conv2d(x, w, strides=[1, 2, 2, 1], padding="SAME"), b)
+    out_2 = tf.nn.relu(out_2)
+    out = out_1 + out_2
+    return out
+'''
 def cropCenter(x1,x2):
     with tf.name_scope("cropCenter"):
         x1_shape = tf.shape(x1)

@@ -18,6 +18,7 @@ para = Parameter()
 root_address = para.root_address
 voxel_address = os.path.join(root_address, 'data/test_npydata')
 label_pre_address = os.path.join(root_address, 'result/pre_image')
+#label_pre_address = os.path.join(root_address, 'result/pre_image_after_crf')
 voxel_save_address =os.path.join(root_address, 'result/pre_voxel')
 labeled_voxel_save_address = os.path.join(root_address, 'result/labeled_voxel')
 

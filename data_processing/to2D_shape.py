@@ -92,8 +92,8 @@ def _region_of_IVD(voxel):
 
 
 for index in a:
-    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data/{}/{}_Labels.npy'.format(index, index)
-    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/each_IVD_region/{}'.format(index) 
+    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_pianyi_left/{}/{}_Labels.npy'.format(index, index)
+    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/pianyi_left/{}'.format(index) 
     voxel = np.load(npy_data_address)
     voxel = del_small_rigion(voxel)
 
@@ -105,14 +105,19 @@ for index in a:
     y_min = min(point_list[2])
     y_max = max(point_list[2])
 
-    region_list = _region_of_IVD(labeled_voxel)
+    point_list = _select_small_IVD(labeled_voxel)
+    small_x_min = min(point_list[1])
+    small_x_max = max(point_list[1])
+    small_y_min = min(point_list[2])
+    small_y_max = max(point_list[2])
+
     '''
     x_min = x_min-3 if x_min-3>0 else 1
     x_max = x_max+3 if x_max+3<255 else 255
     y_min = y_min-3 if y_min-3>0 else 1
     y_max = y_max+3 if y_max+3<255 else 255
     '''
-    arr = np.array(region_list)
+    arr = np.array([x_min, x_max, y_min, y_max, small_x_min, small_x_max, small_y_min, small_y_max])
     for addr in os.listdir(data_save_address):  # addr:0
         tmp_addr = os.path.join(data_save_address, addr)  #2D_data_all_shape/01/0
         for tmp in os.listdir(tmp_addr):
