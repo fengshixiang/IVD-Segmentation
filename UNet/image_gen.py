@@ -182,11 +182,47 @@ class fourChannelProvider(BaseDataProvider):
         label = self._load_label(label_name, np.bool)
     
         return img,label
-'''
-class fourChannelProvider(BaseDataProvider):
+
+    def __call__(self, n):
+        train_data, labels = self._load_data_and_label()
+        nx = train_data.shape[1]
+        ny = train_data.shape[2]
+    
+        X = np.zeros((n, nx, ny, self.channels))
+        Y = np.zeros((n, nx, ny, self.n_class))
+    
+        X[0] = train_data
+        Y[0] = labels
+        for i in range(1, n):
+            train_data, labels = self._load_data_and_label()
+            X[i] = train_data
+            Y[i] = labels
+
+        if para.RMVD:
+            for i in range(0, n):
+                if np.random.rand() >para.RMVD_value:
+                    tmp = np.random.rand()
+                    x = np.zeros((nx, ny))
+                    if tmp < 0.25:
+                        X[i, ..., 0] = x
+                    elif tmp>=0.25 and tmp<0.5:
+                        X[i, ..., 1] = x
+                    elif tmp>=0.5 and tmp<0.75:
+                        X[i, ..., 2] = x
+                    elif tmp>=0.75:
+                        X[i, ..., 3] = x
+                    X[i] = X[i]/0.75        
+    
+        return X, Y
+
+class twelve_Provider(BaseDataProvider):
+    """
+    Data provider for IVD images.
+    Twelve channels and use shapeterm if para.shape==True.
+    """
     def __init__(self, search_path, a_min=None, a_max=None, data_suffix="fat.npy",
                  mask_suffix='label.npy', shuffle_data=True, n_class = 2):
-        super(fourChannelProvider, self).__init__(a_min, a_max)
+        super(twelve_Provider, self).__init__(a_min, a_max)
         self.data_suffix = data_suffix
         self.mask_suffix = mask_suffix
         self.file_idx = -1
@@ -209,20 +245,20 @@ class fourChannelProvider(BaseDataProvider):
         return [name for name in all_files if self.data_suffix in name]
     
     def _load_file(self, path, dtype=np.float32):
-        fat_path = path.replace(self.data_suffix, "opp.npy")
-        inn_path = path.replace(self.data_suffix, "opp.npy")
-        wat_path = path.replace(self.data_suffix, "opp.npy")
+        fat_path = path.replace(self.data_suffix, "fat.npy")
+        inn_path = path.replace(self.data_suffix, "inn.npy")
+        wat_path = path.replace(self.data_suffix, "wat.npy")
         opp_path = path.replace(self.data_suffix, "opp.npy")
         fat_img = np.array(np.load(fat_path), dtype=dtype)
         inn_img = np.array(np.load(inn_path), dtype=dtype)
         wat_img = np.array(np.load(wat_path), dtype=dtype)
         opp_img = np.array(np.load(opp_path), dtype=dtype)
 
-        img = np.zeros((fat_img.shape[0], fat_img.shape[1], 4), dtype=dtype)
-        img[...,0] = fat_img
-        img[...,1] = inn_img
-        img[...,2] = wat_img
-        img[...,3] = opp_img
+        img = np.zeros((fat_img.shape[1], fat_img.shape[2], 12), dtype=dtype)
+        img[...,0] = fat_img[0]; img[...,1]=fat_img[1];img[...,2]=fat_img[2]
+        img[...,3] = inn_img[0]; img[...,4]=inn_img[1];img[...,5]=inn_img[2]
+        img[...,6] = wat_img[0]; img[...,7]=wat_img[1];img[...,8]=wat_img[2]
+        img[...,9] = opp_img[0]; img[...,10]=opp_img[1];img[...,11]=opp_img[2]
 
         return img
 
@@ -245,7 +281,60 @@ class fourChannelProvider(BaseDataProvider):
         label = self._load_label(label_name, np.bool)
     
         return img,label
-'''
+  
+    def __call__(self, n):
+        train_data, labels = self._load_data_and_label()
+        nx = train_data.shape[1]
+        ny = train_data.shape[2]
+    
+        X = np.zeros((n, nx, ny, self.channels))
+        Y = np.zeros((n, nx, ny, self.n_class))
+    
+        X[0] = train_data
+        Y[0] = labels
+        for i in range(1, n):
+            train_data, labels = self._load_data_and_label()
+            X[i] = train_data
+            Y[i] = labels
+
+        if para.RMVD:
+            for i in range(0, n):
+                if np.random.rand() >0.9:
+                    tmp = np.random.rand()
+                    tmp_1 = np.random.rand()
+                    x = np.zeros((nx, ny))
+                    if tmp < 0.25:
+                        if tmp_1<0.33:
+                            X[i, ..., 0] = x
+                        elif tmp_1>=0.33 and tmp<0.67:
+                            X[i, ..., 1] = x
+                        else:
+                            X[i, ..., 2] = x
+                    elif tmp>=0.25 and tmp<0.5:
+                        if tmp_1<0.33:
+                            X[i, ..., 3] = x
+                        elif tmp_1>=0.33 and tmp<0.67:
+                            X[i, ..., 4] = x
+                        else:
+                            X[i, ..., 5] = x
+                    elif tmp>=0.5 and tmp<0.75:
+                        if tmp_1<0.33:
+                            X[i, ..., 6] = x
+                        elif tmp_1>=0.33 and tmp<0.67:
+                            X[i, ..., 7] = x
+                        else:
+                            X[i, ..., 8] = x
+                    elif tmp>=0.75:
+                        if tmp_1<0.33:
+                            X[i, ..., 9] = x
+                        elif tmp_1>=0.33 and tmp<0.67:
+                            X[i, ..., 10] = x
+                        else:
+                            X[i, ..., 11] = x
+                    X[i] = X[i]/11.0*12.0
+    
+        return X, Y
+
 if __name__ == '__main__':
     root_address = para.root_address
     generator_address = os.path.join(root_address, 'data/train/*/*/*.npy')
