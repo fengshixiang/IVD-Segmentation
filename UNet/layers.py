@@ -86,6 +86,17 @@ def deconv2d_2(x, in_dim, out_dim, larger, training):
         conv2d_b = tf.nn.bias_add(conv_2d, b)
         return conv2d_b
 
+def deconv2d_xz(x, in_dim, out_dim, larger1, larger2, training):
+    with tf.name_scope("deconv2d"):
+        stddev = np.sqrt(2 / (3 ** 2 * out_dim))
+        x_shape = tf.shape(x)
+        new_x = tf.image.resize_bilinear(x, size=[larger1*x_shape[1], larger2*x_shape[2]])
+        w = weight_variable([3, 3, in_dim, out_dim], stddev, name="w")
+        b = bias_variable([out_dim], name='b')
+        conv_2d = tf.nn.conv2d(new_x, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_b = tf.nn.bias_add(conv_2d, b)
+        return conv2d_b
+
 def inception_conv(x, in_dim, out_dim, keep_prob_, training):
     with tf.name_scope("conv2d"):
         stddev = np.sqrt(2 / (3 ** 2 * out_dim))
@@ -224,6 +235,9 @@ def dense_link(x, stride, out_dim):
 
 def max_pool(x, n):
     return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
+
+def max_pool_xz(x, n1, n2):
+    return tf.nn.max_pool(x, ksize=[1, n1, n2, 1], strides=[1, n1, n2, 1], padding='VALID')
 
 '''
 def max_pool(x, n, in_dim):

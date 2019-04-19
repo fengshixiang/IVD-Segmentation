@@ -82,6 +82,50 @@ def img2voxel(label_pre_address, voxel_save_address, img_height=256, img_width=2
 
         np.save(voxel_save_addr + '/pre.npy', voxel)   ## pre_voxel/01/pre.npy
 
+def img2voxel_xz(label_pre_address, voxel_save_address, img_height=36, img_width=256):
+    if not os.path.exists(voxel_save_address):
+        os.mkdir(voxel_save_address)
+    for addr in os.listdir(label_pre_address):   # addr: 01
+        labels_addr = os.path.join(label_pre_address, addr)  # pre_image/01
+        voxel_save_addr = os.path.join(voxel_save_address, addr)  # pre_voxel/01
+        if not os.path.exists(voxel_save_addr):
+            os.mkdir(voxel_save_addr)
+
+        length_1 = len(os.listdir(labels_addr))  
+        voxel = np.empty((36, 256, 256))
+
+        for addr_1 in os.listdir(labels_addr):   #addr_1: 0
+            label_addr = os.path.join(labels_addr, addr_1)    # pre_image/01/0
+            for file in os.listdir(label_addr):
+                if '_pre.npy' in file:
+                    label_arr = np.load(os.path.join(label_addr, file))
+                    index = int(addr_1)
+                    voxel[:, index, :] = label_arr
+
+        np.save(voxel_save_addr + '/pre.npy', voxel)   ## pre_voxel/01/pre.npy
+
+def img2voxel_yz(label_pre_address, voxel_save_address, img_height=36, img_width=256):
+    if not os.path.exists(voxel_save_address):
+        os.mkdir(voxel_save_address)
+    for addr in os.listdir(label_pre_address):   # addr: 01
+        labels_addr = os.path.join(label_pre_address, addr)  # pre_image/01
+        voxel_save_addr = os.path.join(voxel_save_address, addr)  # pre_voxel/01
+        if not os.path.exists(voxel_save_addr):
+            os.mkdir(voxel_save_addr)
+
+        length_1 = len(os.listdir(labels_addr))  
+        voxel = np.empty((36, 256, 256))
+
+        for addr_1 in os.listdir(labels_addr):   #addr_1: 0
+            label_addr = os.path.join(labels_addr, addr_1)    # pre_image/01/0
+            for file in os.listdir(label_addr):
+                if '_pre.npy' in file:
+                    label_arr = np.load(os.path.join(label_addr, file))
+                    index = int(addr_1)
+                    voxel[:, :, index] = label_arr
+
+        np.save(voxel_save_addr + '/pre.npy', voxel)   ## pre_voxel/01/pre.npy
+
 def _del_small_rigion_gt(voxel):
     #for gt voxel, find the top 7 rigions and delete others
     voxel, num = mear.label(voxel)
@@ -163,44 +207,6 @@ def _get_set(gtVoxel, preVoxel, labeled_num):
     print([len(gt_IVDset_list[i]) for i in range(7)])
     print([len(pre_IVDset_list[i]) for i in range(7)])
     return gt_IVDset_list, pre_IVDset_list[0:7]
-'''
-def _get_set(gtVoxel, preVoxel, labeled_num):
-    gt_per_region = dict()
-    pre_per_region = dict()
-    for i in range(1, 8):
-        tmp_arr = np.where(voxel==i)
-        gt_per_region[i] = tmp_arr
-    for j in range(1, labeled_num+1):
-        tmp_arr = np.where(voxel==i):
-        pre_per_region[i] = tmp_arr
-
-    # match
-    for i in range(7):
-        tmp_arr = gt_per_region[i]
-        for j in range(i, labeled_num)
-
-    nz = gtVoxel.shape[0]
-    nx = gtVoxel.shape[1]
-    ny = gtVoxel.shape[2]
-    gt_IVDset_list = dict()
-    pre_IVDset_list = dict()
-    for i in range(7):
-        gt_IVDset_list.append(set())
-    for i in range(labeled_num):
-        pre_IVDset_list.append(set())
-
-    for i in range(1, 8):
-        tmp_arr = np.where(gtVoxel==i)
-        for j in range(len(tmp_arr[0])):
-            gt_IVDset_list[i-1].add(tmp_arr[0][j]*nx*ny+tmp_arr[1][j]*ny+tmp_arr[2][j])
-    for i in range(1, labeled_num+1):
-        tmp_arr = np.where(voxel==i)
-        if len(tmp_arr[0]) > 50:
-            for j in range(len(tmp_arr[0])):
-                voxel[tmp_arr[0][j], tmp_arr[1][j], tmp_arr[2][j]] = 1
-            num_per_rigion[i] = len(tmp_arr[0])
-'''
-
 
 def plt_histogram(gt_len_list, dice_list):
     save_addr = os.path.join(root_address, 'result/hist')
@@ -218,7 +224,6 @@ def plt_histogram(gt_len_list, dice_list):
     plt.scatter(gt_len_list[1], dice_list[1], marker='+')
     plt.scatter(gt_len_list[2], dice_list[2], marker='o')
     plt.savefig(save_addr+'/result.png')
-
 
 def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
     
@@ -265,7 +270,6 @@ def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
     sddoc = SDDOC(dice_list, mdoc)
     plt_histogram(gt_len_list, dice_list)
     return mdoc, sddoc
-
 
 if __name__ == '__main__':
     img2voxel(label_pre_address, voxel_save_address)
