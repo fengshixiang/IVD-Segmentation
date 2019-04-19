@@ -26,6 +26,7 @@ import glob
 import os
 from image_util import BaseDataProvider
 from parameter import Parameter
+import random
 
 class GrayScaleDataProvider(BaseDataProvider):
     channels = 1
@@ -183,70 +184,7 @@ class fourChannelProvider(BaseDataProvider):
     
         return img,label
 '''
-'''
-class fourChannelProvider(BaseDataProvider):
-    def __init__(self, search_path, a_min=None, a_max=None, data_suffix="fat.npy",
-                 mask_suffix='label.npy', shuffle_data=True, n_class = 2):
-        super(fourChannelProvider, self).__init__(a_min, a_max)
-        self.data_suffix = data_suffix
-        self.mask_suffix = mask_suffix
-        self.file_idx = -1
-        self.shuffle_data = shuffle_data
-        self.n_class = n_class
-        
-        self.data_files = self._find_data_files(search_path)
-        
-        if self.shuffle_data:
-            np.random.shuffle(self.data_files)
-        
-        assert len(self.data_files) > 0, "No training files"
-        print("Number of files used: %s" % len(self.data_files))
-        
-        img = self._load_file(self.data_files[0])
-        self.channels = 1 if len(img.shape) == 2 else img.shape[-1]
-        
-    def _find_data_files(self, search_path):
-        all_files = glob.glob(search_path)
-        return [name for name in all_files if self.data_suffix in name]
-    
-    def _load_file(self, path, dtype=np.float32):
-        fat_path = path.replace(self.data_suffix, "opp.npy")
-        inn_path = path.replace(self.data_suffix, "opp.npy")
-        wat_path = path.replace(self.data_suffix, "opp.npy")
-        opp_path = path.replace(self.data_suffix, "opp.npy")
-        fat_img = np.array(np.load(fat_path), dtype=dtype)
-        inn_img = np.array(np.load(inn_path), dtype=dtype)
-        wat_img = np.array(np.load(wat_path), dtype=dtype)
-        opp_img = np.array(np.load(opp_path), dtype=dtype)
 
-        img = np.zeros((fat_img.shape[0], fat_img.shape[1], 4), dtype=dtype)
-        img[...,0] = fat_img
-        img[...,1] = inn_img
-        img[...,2] = wat_img
-        img[...,3] = opp_img
-
-        return img
-
-    def _load_label(self, path, dtype=np.bool):
-        return np.array(np.load(path), dtype=dtype) 
-
-    def _cylce_file(self):
-        self.file_idx += 1
-        if self.file_idx >= len(self.data_files):
-            self.file_idx = 0 
-            if self.shuffle_data:
-                np.random.shuffle(self.data_files)
-        
-    def _next_data(self):
-        self._cylce_file()
-        image_name = self.data_files[self.file_idx]
-        label_name = image_name.replace(self.data_suffix, self.mask_suffix)
-        
-        img = self._load_file(image_name, np.float32)
-        label = self._load_label(label_name, np.bool)
-    
-        return img,label
-'''
 class shapeProvider(BaseDataProvider):
     def __init__(self, search_path, a_min=None, a_max=None, data_suffix="fat.npy",
                  mask_suffix='label.npy', shuffle_data=True, n_class = 2):
@@ -345,6 +283,21 @@ class shapeProvider(BaseDataProvider):
             X[i] = train_data
             Y[i] = labels
             Z[i] = range_arr
+
+        if para.RMVD:
+            for i in range(0, n):
+                if np.random.rand() >0.9:
+                    tmp = np.random.rand()
+                    x = np.zeros((nx, ny))
+                    if tmp < 0.25:
+                        X[i, ..., 0] = x
+                    elif tmp>=0.25 and tmp<0.5:
+                        X[i, ..., 1] = x
+                    elif tmp>=0.5 and tmp<0.75:
+                        X[i, ..., 2] = x
+                    elif tmp>=0.75:
+                        X[i, ..., 3] = x
+                    X[i] = X[i]/0.75
 
         return X, Y, Z
 

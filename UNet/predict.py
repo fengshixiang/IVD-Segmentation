@@ -19,42 +19,55 @@ para = Parameter()
 root_address = para.root_address
 data_address = os.path.join(root_address, 'data/test')
 prediction_save_address = os.path.join(root_address, 'result/pre_image')
+prediction_save_address_crf = os.path.join(root_address, 'result/pre_image_crf')
 unet_model_path = os.path.join(root_address, 'result/unet_trained/model.ckpt')
 provider_path = os.path.join(root_address, 'data/test/*/*/*.npy')
 
 if not os.path.exists(prediction_save_address):
     os.mkdir(prediction_save_address)
+if not os.path.exists(prediction_save_address_crf):
+    os.mkdir(prediction_save_address_crf)
 
 patient_pre_list = []
 patient_label_list = []
 patient_save_list = []
+patient_save_crf_list = []
 for addr in os.listdir(data_address):     #addr:01
 
-	image_pre_list = []
-	image_label_list = []
-	image_save_list = []
+    image_pre_list = []
+    image_label_list = []
+    image_save_list = []
+    image_save_crf_list = []
 
-	patient_addr = os.path.join(data_address, addr)     #data/test/01
-	patient_save_addr = os.path.join(prediction_save_address, addr)    #pre_image/01
-	if not os.path.exists(patient_save_addr):
-		os.mkdir(patient_save_addr)
+    patient_addr = os.path.join(data_address, addr)     #data/test/01
+    patient_save_addr = os.path.join(prediction_save_address, addr)    #pre_image/01
+    patient_save_addr_crf = os.path.join(prediction_save_address_crf, addr)
+    if not os.path.exists(patient_save_addr):
+        os.mkdir(patient_save_addr)
+    if not os.path.exists(patient_save_addr_crf):
+        os.mkdir(patient_save_addr_crf)
 
-	for addr_1 in os.listdir(patient_addr):     #addr_1:0
-		image_addr = os.path.join(patient_addr, addr_1)   #data/test/01/0
-		images_save_addr = os.path.join(patient_save_addr, addr_1)   #pre_image/01/0
-		if not os.path.exists(images_save_addr):
-			os.mkdir(images_save_addr)
+    for addr_1 in os.listdir(patient_addr):     #addr_1:0
+        image_addr = os.path.join(patient_addr, addr_1)   #data/test/01/0
+        images_save_addr = os.path.join(patient_save_addr, addr_1)   #pre_image/01/0
+        images_save_addr_crf = os.path.join(patient_save_addr_crf, addr_1)   #pre_image/01/0
+        if not os.path.exists(images_save_addr):
+            os.mkdir(images_save_addr)
+        if not os.path.exists(images_save_addr_crf):
+            os.mkdir(images_save_addr_crf)
 
-		for filename in os.listdir(image_addr):
-			if 'fat.npy' in filename:
-				image_pre_list.append(os.path.join(image_addr, filename))     #data/test/01/0/.._fat.npy
-				image_save_list.append(os.path.join(images_save_addr, filename).replace('.npy', '_pre.npy'))   #pre_image01/0/.._fat_pre.npy
-			if 'label.npy' in filename:
-				image_label_list.append(os.path.join(image_addr, filename)) #data/test/01/0/.._label.npy
+        for filename in os.listdir(image_addr):
+            if 'fat.npy' in filename:
+                image_pre_list.append(os.path.join(image_addr, filename))     #data/test/01/0/.._fat.npy
+                image_save_list.append(os.path.join(images_save_addr, filename).replace('.npy', '_pre.npy'))   #pre_image01/0/.._fat_pre.npy
+                image_save_crf_list.append(os.path.join(images_save_addr_crf, filename).replace('.npy', '_pre.npy'))   #pre_image01/0/.._fat_pre.npy
+            if 'label.npy' in filename:
+                image_label_list.append(os.path.join(image_addr, filename)) #data/test/01/0/.._label.npy
 
-	patient_pre_list.append(image_pre_list)
-	patient_label_list.append(image_label_list)
-	patient_save_list.append(image_save_list)
+    patient_pre_list.append(image_pre_list)
+    patient_label_list.append(image_label_list)
+    patient_save_list.append(image_save_list)
+    patient_save_crf_list.append(image_save_crf_list)
 
 print('start to predict')
 generator = image_gen.shapeProvider(provider_path)
@@ -118,5 +131,6 @@ with tf.Session(config=config) as sess:
                 prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.z:range_arr, net.keep_prob: 1.})
                 mask = prediction[0,...,1] > para.mask
                 np.save(patient_save_list[i][j], mask)
+                np.save(patient_save_crf_list[i][j], prediction[0, ..., 1])
                 plt.imshow(mask, cmap='Greys_r')
                 plt.savefig(patient_save_list[i][j].replace('.npy', '.png'))

@@ -17,7 +17,7 @@ from UNet.parameter import Parameter
 para = Parameter()
 root_address = para.root_address
 img_address = os.path.join(root_address, 'data/test')
-pre_img_address = os.path.join(root_address, 'result/pre_image_crf')
+pre_img_address = os.path.join(root_address, 'result/ensemble_for_crf')
 img_save_address =os.path.join(root_address, 'result/pre_image_after_crf')
 if not os.path.exists(img_save_address):
     os.mkdir(img_save_address)
@@ -85,42 +85,13 @@ def crf_inference_3(img, probs, t=10, scale_factor=1, labels=2):
     U = unary_from_softmax(probs)  # note: num classes is first dim
     d = dcrf.DenseCRF2D(w, h, n_labels)
     d.setUnaryEnergy(U)
-    pairwise_energy = create_pairwise_bilateral(sdims=(10,10), schan=(0.01,), img=img, chdim=2)
+    pairwise_energy = create_pairwise_bilateral(sdims=(10,10), schan=(0.001,), img=img, chdim=2)
     d.addPairwiseEnergy(pairwise_energy, compat=10)
     Q_unary = d.inference(10)
     map_soln_unary = np.argmax(Q_unary, axis=0)
     map_soln_unary = map_soln_unary.reshape((h,w))
     return map_soln_unary
 
-
-def read_img_1(img_path, pre_path):
-    img = np.load(img_path)  #[256,256]
-    plt.figure(figsize=(15,5))
-    plt.subplot(1,2,1); plt.imshow(img, cmap='gray');
-    img = Image.fromarray(img)
-    img = np.array(img.convert("RGB"))
-    print(img.shape)
-    plt.subplot(1,2,2); plt.imshow(img, cmap='gray');
-    plt.show()
-
-    probs = np.load(pre_path)
-    return img, probs
-
-def read_img_2(img_path, pre_path):
-    img = np.load(img_path)  #[256,256]
-    print(img[128])
-    img = np.array(Image.fromarray(img).convert("RGB"))
-    print(img.shape)
-    print(img[128, :, 0])
-    print(img[128, :, 1])
-    print(img[128, :, 2])
-    plt.imshow(img)
-    #plt.show()
-
-    probs = np.load(pre_path)
-    probs = np.expand_dims(probs, 0)
-    probs = np.append(1 - probs, probs, axis=0)  #[2, 256, 256]
-    return img, probs
 
 def read_img_3(img_path, pre_path):
     img = np.load(img_path)  #[256,256]
@@ -149,7 +120,7 @@ def crf():
     for index in os.listdir(img_address): #01
         print(index)
         index_addr = os.path.join(img_address, index)   #test/01
-        index_pre_addr = os.path.join(pre_img_address, index)  #pre_image_crf/01
+        index_pre_addr = os.path.join(pre_img_address, index)  #ensemble_for_crf/01
         index_save_addr = os.path.join(img_save_address, index)  #pre_img_after_crf/01
 
         if not os.path.exists(index_save_addr):
@@ -157,14 +128,14 @@ def crf():
 
         for addr in os.listdir(index_addr):  #0
             img_addr = os.path.join(index_addr, addr)  #test/01/0
-            img_pre_addr = os.path.join(index_pre_addr, addr)  #pre_image_crf/01/0
+            img_pre_addr = os.path.join(index_pre_addr, addr)  #ensemble_for_crf/01/0
             img_save_addr = os.path.join(index_save_addr, addr)  #pre_img_after_crf/01/0
 
             if not os.path.exists(img_save_addr):
                 os.mkdir(img_save_addr)
 
             img_path = os.path.join(img_addr, '{}_{}_opp.npy'.format(index, addr))
-            img_pre_path = os.path.join(img_pre_addr, '{}_{}_fat_pre.npy'.format(index, addr))
+            img_pre_path = os.path.join(img_pre_addr, '{}.npy'.format(addr))
             img_save_path = os.path.join(img_save_addr, '{}_{}_fat_pre.npy'.format(index, addr))
             img, probs = read_img_3(img_path, img_pre_path)
             crf_score = crf_inference_3(img, probs)
@@ -177,7 +148,7 @@ def crf_2():
     for index in os.listdir(img_address): #01
         print(index)
         index_addr = os.path.join(img_address, index)   #test/01
-        index_pre_addr = os.path.join(pre_img_address, index)  #pre_image_crf/01
+        index_pre_addr = os.path.join(pre_img_address, index)  #ensemble_for_crf/01
         index_save_addr = os.path.join(img_save_address, index)  #pre_img_after_crf/01
 
         if not os.path.exists(index_save_addr):
@@ -185,7 +156,7 @@ def crf_2():
 
         for addr in os.listdir(index_addr):  #0
             img_addr = os.path.join(index_addr, addr)  #test/01/0
-            img_pre_addr = os.path.join(index_pre_addr, addr)  #pre_image_crf/01/0
+            img_pre_addr = os.path.join(index_pre_addr, addr)  #ensemble_for_crf/01/0
             img_save_addr = os.path.join(index_save_addr, addr)  #pre_img_after_crf/01/0
 
             if not os.path.exists(img_save_addr):
@@ -196,16 +167,16 @@ def crf_2():
             img_path_3 = os.path.join(img_addr, '{}_{}_opp.npy'.format(index, addr))
             img_path_4 = os.path.join(img_addr, '{}_{}_wat.npy'.format(index, addr))
             img_path = [img_path_1, img_path_2, img_path_3, img_path_4]
-            img_pre_path = os.path.join(img_pre_addr, '{}_{}_fat_pre.npy'.format(index, addr))
+            img_pre_path = os.path.join(img_pre_addr, '{}.npy'.format(addr))
             img_save_path = os.path.join(img_save_addr, '{}_{}_fat_pre.npy'.format(index, addr))
             img, probs = read_img_4(img_path, img_pre_path)
             crf_score = crf_inference_3(img, probs)
-            crf_score = crf_score > para.mask
+            crf_score = crf_score > 0.1
             np.save(img_save_path, crf_score)
             plt.imshow(crf_score, cmap='gray')
             plt.savefig(img_save_path.replace('npy', 'png'))
 
 if __name__ == '__main__':
-    crf()
+    crf_2()
 
 

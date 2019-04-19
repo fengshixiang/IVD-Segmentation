@@ -19,8 +19,42 @@ root_address = para.root_address
 voxel_address = os.path.join(root_address, 'data/test_npydata')
 label_pre_address = os.path.join(root_address, 'result/pre_image')
 #label_pre_address = os.path.join(root_address, 'result/pre_image_after_crf')
+#label_pre_address = os.path.join(root_address, 'result/ensemble_for_crf')
+label_crf_pre_address = os.path.join(root_address, 'result/pre_image_crf')
 voxel_save_address =os.path.join(root_address, 'result/pre_voxel')
+voxel_crf_save_address = os.path.join(root_address, 'result/pre_voxel_crf')
 labeled_voxel_save_address = os.path.join(root_address, 'result/labeled_voxel')
+
+
+def img_resize_1(m):
+    # 512 to 256
+    new_m = np.zeros([256, 256])
+    for i in range(256):
+        for j in range(256):
+            num = 0
+            if m[2*i, 2*j] == True:
+                num += 1
+            if m[2*i+1, 2*j] == True:
+                num += 1
+            if m[2*i, 2*j+1] == True:
+                num += 1
+            if m[2*i+1, 2*j+1] == True:
+                num += 1
+
+            if num >=1:
+                new_m[i, j] = 1
+            else:
+                new_m[i, j] = 0
+    return new_m
+
+def img_resize_2(m):
+    # 128 to 256
+    new_m = np.zeros([256, 256])
+    for i in range(128):
+        for j in range(128):
+            new_m[2*i, 2*j] = new_m[2*i+1, 2*j] = new_m[2*i, 2*j+1] = new_m[2*i+1, 2*j+1] = m[i, j]
+
+    return new_m.astype(int)
 
 def img2voxel(label_pre_address, voxel_save_address, img_height=256, img_width=256):
     if not os.path.exists(voxel_save_address):
@@ -37,8 +71,12 @@ def img2voxel(label_pre_address, voxel_save_address, img_height=256, img_width=2
         for addr_1 in os.listdir(labels_addr):   #addr_1: 0
             label_addr = os.path.join(labels_addr, addr_1)    # pre_image/01/0
             for file in os.listdir(label_addr):
-                if '_pre.npy' in file:
+                if '.npy' in file:
                     label_arr = np.load(os.path.join(label_addr, file))
+                    if label_arr.shape[0] == 512:
+                        label_arr = img_resize_1(label_arr)
+                    elif label_arr.shape[0] == 128:
+                        label_arr = img_resize_2(label_arr)
                     index = int(addr_1)
                     voxel[index] = label_arr
 
@@ -231,6 +269,7 @@ def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
 
 if __name__ == '__main__':
     img2voxel(label_pre_address, voxel_save_address)
+    #img2voxel(label_crf_pre_address, voxel_crf_save_address)
     print('start evaluation')
     mdoc, sddoc = eval(voxel_address, voxel_save_address,  labeled_voxel_save_address)
 
