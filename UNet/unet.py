@@ -32,7 +32,7 @@ import util
 from layers import (weight_variable, weight_variable_devonc, bias_variable,
                     conv2d, deconv2d, max_pool, pixel_wise_softmax, cross_entropy,
                     inception_conv, dense_link, cropCenter, conv2d_2, deconv2d_2,
-                    cSE_layer, scSE_layer, sSE_layer, max_pool_xz, deconv2d_xz)
+                    cSE_layer, scSE_layer, sSE_layer, max_pool_xz, deconv2d_xz, deconv2d_xz_2)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 para = Parameter()
@@ -1354,7 +1354,7 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
                 if layer == 0 or layer == 2:
                     fat_pools[layer] = max_pool_xz(conv, 1, 2)
                 elif layer == 1 or layer == 3:
-                    fat_pools[layer] = max_pool_xz(conv, 1, 2)
+                    fat_pools[layer] = max_pool_xz(conv, 2, 2)
                 in_node = fat_pools[layer]
 
     in_node = fat_dw_h_convs[layers-1]
@@ -1364,9 +1364,9 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
         with tf.name_scope("up_conv_{}".format(str(layer))):
             features = 2 ** (layer + 1) * features_root
             if layer==3 or layer==1:
-                h_deconv = deconv2d(in_node, features, features//2, 2, 2, training)
+                h_deconv = deconv2d_xz(in_node, features, features//2, 2, 2, training)
             else:
-                h_deconv = deconv2d(in_node, features, features//2, 1, 2, training)
+                h_deconv = deconv2d_xz(in_node, features, features//2, 1, 2, training)
             h_deconv_concat = tf.concat([h_deconv, fat_dw_h_convs[layer]], 3)
 
             deconv[layer] = h_deconv_concat
@@ -1384,7 +1384,7 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
         with tf.name_scope("output_{}".format(str(layer))):
             in_node = up_h_convs[layer]
             conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
-            deconv = deconv2d_xz(conv, in_dim=2, out_dim=2, larger1=1, larger2=2**layer, training)
+            deconv = deconv2d_xz_2(conv, in_dim=2, out_dim=2, larger1=1, larger2=2**layer, training=training)
             up_h_convs["out_{}".format(layer)] = deconv
             
     in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
@@ -1435,7 +1435,7 @@ class Unet(object):
         self.y = tf.placeholder("float", shape=[None, None, None, n_class], name="y")
         self.keep_prob = tf.placeholder(tf.float32, name="dropout_probability")  # dropout (keep probability)
 
-        logits, self.variables= create_UNet_edge_addloss(self.x, self.keep_prob, channels, n_class, **kwargs)
+        logits, self.variables= create_UNet_edge_xz_yz(self.x, self.keep_prob, channels, n_class, **kwargs)
         #logits, self.variables= create_conv_net_edge(self.x, self.keep_prob, channels, n_class, **kwargs)
         
         self.cost = self._get_cost(logits, cost, cost_kwargs)

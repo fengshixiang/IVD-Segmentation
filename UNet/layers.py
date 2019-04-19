@@ -140,7 +140,18 @@ def deconv2d_2(x, in_dim, out_dim, larger, training):
         conv2d_b = tf.nn.bias_add(conv_2d, b)
         return conv2d_b
 
-def deconv2d_xz(x, in_dim, out_dim, larger1, larger2, training):
+def deconv2d_xz(x, in_dim, out_dim, stride1, stride2, training):
+    with tf.name_scope("deconv2d"):
+        stddev = np.sqrt(2 / (3 ** 2 * out_dim))
+        wd = weight_variable([2, 2, out_dim, in_dim], stddev, name="wd")
+        x_shape = tf.shape(x)
+        output_shape = tf.stack([x_shape[0], x_shape[1]*stride1, x_shape[2]*2, x_shape[3]//2])
+        deconv_2d = tf.nn.conv2d_transpose(x, wd, output_shape, strides=[1, stride1, stride2, 1], padding='SAME', name="conv2d_transpose")
+        #deconv_2d = tf.layers.batch_normalization(deconv_2d, training=training)
+        deconv_2d = tf.nn.relu(deconv_2d)
+        return deconv_2d
+
+def deconv2d_xz_2(x, in_dim, out_dim, larger1, larger2, training):
     with tf.name_scope("deconv2d"):
         stddev = np.sqrt(2 / (3 ** 2 * out_dim))
         x_shape = tf.shape(x)
@@ -312,9 +323,9 @@ def crop_and_concat(x1,x2):
 
 def pixel_wise_softmax(output_map):
     with tf.name_scope("pixel_wise_softmax"):
-        max_axis = tf.reduce_max(output_map, axis=3, keep_dims=True)
+        max_axis = tf.reduce_max(output_map, axis=3, keepdims=True)
         exponential_map = tf.exp(output_map - max_axis)
-        normalize = tf.reduce_sum(exponential_map, axis=3, keep_dims=True)
+        normalize = tf.reduce_sum(exponential_map, axis=3, keepdims=True)
         return exponential_map / normalize
 
 def cross_entropy(y_,output_map):
