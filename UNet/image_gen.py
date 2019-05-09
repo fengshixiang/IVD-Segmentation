@@ -232,7 +232,10 @@ class shapeProvider(BaseDataProvider):
         return np.array(np.load(path), dtype=dtype) 
 
     def _load_range(self, path, dtype=np.int32):
-        return np.array(np.loadtxt(path), dtype=dtype)
+        if os.path.exists(path):
+            return np.array(np.loadtxt(path), dtype=dtype)
+        else:
+            return(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
 
     def _cylce_file(self):
         self.file_idx += 1
@@ -264,7 +267,7 @@ class shapeProvider(BaseDataProvider):
         nx = train_data.shape[0]
         ny = train_data.shape[1]
 
-        return train_data.reshape(1, nx, ny, self.channels), labels.reshape(1, ny, nx, self.n_class), range_arr
+        return train_data.reshape(1, nx, ny, self.channels), labels.reshape(1, nx, ny, self.n_class), range_arr
 
     def __call__(self, n):
         train_data, labels, range_arr = self._load_data_and_label()

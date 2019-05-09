@@ -9,22 +9,23 @@ import os
 
 class Parameter(object):
     def __init__(self): 
-        #self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/pianyi_left'
-        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/010611_2'
-        self.cost = 'shape_3+EPE_3' #name of the cost function. cross_entropy , dice, shape
+        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/xz-010611-IVD'
+        self.cost = 'cross_entropy' #name of the cost function. cross_entropy , dice
         self.regularizer=None       #power of the L2 regularizers added to the loss function
         self.channel=4
         self.layers=5
         self.features_root=32
         self.batch_size=4
-        self.training_iters=117
+        self.training_iters=468 // self.batch_size
+        #self.training_iters=60
         self.epochs=110
-        self.display_step=117*8     #number of steps till outputting stats
+        self.display_step=1170     #number of steps till outputting stats
         self.dropout=1.0
         self.restore=False       #Flag if previous model should be restored
         self.learning_rate=0.0001
         self.decay_rate=0.5
-        self.decay_epochs=80
+        self.decay_epochs=95
         self.mask=0.5
         self.create=1           # 1:conventional
         self.RMVD=False
+        self.RMVD_value=0.5

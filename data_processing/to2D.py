@@ -3,10 +3,13 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_pianyi_left'
-data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/pianyi_left' 
+npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_norm'
+data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/norm' 
 start_index = 0
 end_index = 36
+
+if not os.path.exists(data_save_address):
+	os.mkdir(data_save_address)
 
 index_list = ['09', '10', '11', '12']
 
@@ -15,8 +18,8 @@ index_list = ['09', '10', '11', '12']
 for addr in index_list:
 	print('process on {}'.format(addr))
 
-	patient_addr = os.path.join(npy_data_address, addr) # npy_data/01
-	patient_save_addr = os.path.join(data_save_address, addr) # 2D_data_slidesweight/01
+	patient_addr = os.path.join(npy_data_address, addr) # npy_data_norm/01
+	patient_save_addr = os.path.join(data_save_address, addr) # 2D_data/norm/01
 	if not os.path.exists(patient_save_addr):
 		os.mkdir(patient_save_addr)
 

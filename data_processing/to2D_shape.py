@@ -92,8 +92,8 @@ def _region_of_IVD(voxel):
 
 
 for index in a:
-    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_pianyi_left/{}/{}_Labels.npy'.format(index, index)
-    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/pianyi_left/{}'.format(index) 
+    npy_data_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_norm/{}/{}_Labels.npy'.format(index, index)
+    data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/2D_data/norm/{}'.format(index) 
     voxel = np.load(npy_data_address)
     voxel = del_small_rigion(voxel)
 

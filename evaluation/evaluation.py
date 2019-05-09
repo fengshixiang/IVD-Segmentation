@@ -272,7 +272,7 @@ def eval(gt_voxel_address, pre_voxel_address, labeled_voxel_save_address):
     return mdoc, sddoc
 
 if __name__ == '__main__':
-    img2voxel(label_pre_address, voxel_save_address)
+    img2voxel_xz(label_pre_address, voxel_save_address)
     #img2voxel(label_crf_pre_address, voxel_crf_save_address)
     print('start evaluation')
     mdoc, sddoc = eval(voxel_address, voxel_save_address,  labeled_voxel_save_address)
