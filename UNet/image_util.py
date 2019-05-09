@@ -128,7 +128,6 @@ class SimpleDataProvider(BaseDataProvider):
         idx = np.random.choice(self.file_count)
         return self.data[idx], self.label[idx]
 
-
 class ImageDataProvider(BaseDataProvider):
     """
     Generic data provider for images, supports gray scale and colored images.

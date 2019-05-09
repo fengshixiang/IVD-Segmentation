@@ -9,7 +9,7 @@ import os
 
 class Parameter(object):
     def __init__(self): 
-        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/yz-010611'
+        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/010611_1'
         self.cost = 'CE' #name of the cost function. cross_entropy , dice
         self.regularizer=None       #power of the L2 regularizers added to the loss function
         self.channel=4
@@ -19,7 +19,7 @@ class Parameter(object):
         self.training_iters=468 // self.batch_size
         #self.training_iters=60
         self.epochs=100
-        self.display_step=1170     #number of steps till outputting stats
+        self.display_step=468//self.batch_size*4     #number of steps till outputting stats
         self.dropout=1.0
         self.restore=False       #Flag if previous model should be restored
         self.learning_rate=0.0001
