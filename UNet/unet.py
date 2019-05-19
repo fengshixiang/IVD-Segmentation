@@ -213,7 +213,7 @@ def create_conv_net(x, keep_prob, channels, n_class, layers=5, features_root=32,
     for layer in range(layers - 2, -1, -1):
         with tf.name_scope("up_conv_{}".format(str(layer))):
             features = 2 ** (layer + 1) * features_root
-            h_deconv = tf.nn.relu(deconv2d(in_node, features, features//2, training))
+            h_deconv = deconv2d(in_node, features, features//2, training)
             h_deconv_concat = tf.concat([dw_h_convs[layer], h_deconv], 3)
             deconv[layer] = h_deconv_concat
 
@@ -635,12 +635,11 @@ def create_UNet_edge(x, keep_prob, channels, n_class, layers=5, features_root=32
         with tf.name_scope("down_conv_{}".format(str(layer))):
             features = 2 ** layer * features_root
             if layer == 0:
-                conv = inception_conv_my_1(in_node, 4, features, keep_prob, training)
+                conv = inception_conv(in_node, channels, features, keep_prob, training)
             else:
-                conv = inception_conv_my_1(in_node, features//2, features, keep_prob, training)
+                conv = inception_conv(in_node, features//2, features, keep_prob, training)
 
-            if layer==0:
-                conv = scSE_layer(conv, features, ratio=8, name="down_conv_{}".format(layer))
+            #conv = scSE_layer(conv, features, ratio=8, name="down_conv_{}".format(layer))
             fat_dw_h_convs[layer] = conv
 
             if layer < layers-1:
@@ -656,7 +655,7 @@ def create_UNet_edge(x, keep_prob, channels, n_class, layers=5, features_root=32
             h_deconv_concat = tf.concat([h_deconv, fat_dw_h_convs[layer]], 3)
 
             deconv[layer] = h_deconv_concat
-            in_node = inception_conv_my_1(h_deconv_concat, features, features//2, keep_prob, training)
+            in_node = inception_conv(h_deconv_concat, features, features//2, keep_prob, training)
             #in_node = scSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
             up_h_convs[layer] = in_node
 
@@ -1326,7 +1325,7 @@ class Unet(object):
         self.y = tf.placeholder("float", shape=[None, None, None, n_class], name="y")
         self.keep_prob = tf.placeholder(tf.float32, name="dropout_probability")  # dropout (keep probability)
 
-        logits, self.variables= create_UNet_edge(self.x, self.keep_prob, channels, n_class, **kwargs)
+        logits, self.variables= create_conv_net(self.x, self.keep_prob, channels, n_class, **kwargs)
         #logits, self.variables= create_conv_net_edge(self.x, self.keep_prob, channels, n_class, **kwargs)
         
         self.cost = self._get_cost(logits, cost, cost_kwargs)

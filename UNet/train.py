@@ -20,11 +20,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 para = Parameter()
 root_address = para.root_address
 generator_address = os.path.join(root_address, 'data/train/*/*/*.npy')
-if para.channel == 4:
+if para.channel == 1:
+    generator = image_gen.oneChannelProvider(generator_address)
+elif para.channel == 4:
     generator = image_gen.fourChannelProvider(generator_address)
+elif para.channel == 8:
+    generator = image_gen.eightChannelProvider(generator_address)
 elif para.channel == 12:
     generator = image_gen.twelve_Provider(generator_address)
-#generator = image_gen.fourChannelProvider(generator_address)
+
 result_path = os.path.join(root_address, 'result')
 if not os.path.exists(result_path):
     os.mkdir(result_path)

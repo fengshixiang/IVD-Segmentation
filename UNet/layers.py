@@ -370,6 +370,10 @@ def inception_conv_my_1(x, in_dim, out_dim, keep_prob_, training):
         conv2d_0 = tf.nn.relu(conv2d_0)
 
         conv2d = conv2d_6 + conv2d_0
+        w = weight_variable([3, 3, out_dim, out_dim], stddev, name="w")
+        conv2d_output = tf.nn.conv2d(conv2d, w, strides=[1, 1, 1, 1], padding="SAME")
+        conv2d_output = tf.layers.batch_normalization(conv2d_output, training=training, name=w.name[:-2] + '/bn')
+        conv2d_output = tf.nn.relu(conv2d_output)
 
         return conv2d
 

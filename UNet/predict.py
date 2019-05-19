@@ -57,11 +57,15 @@ for addr in os.listdir(data_address):     #addr:01
 	patient_save_list.append(image_save_list)
 
 print('start to predict')
-if para.channel == 4:
+if para.channel == 1:
+    generator = image_gen.oneChannelProvider(provider_path)
+elif para.channel == 4:
     generator = image_gen.fourChannelProvider(provider_path)
+elif para.channel == 8:
+    generator = image_gen.eightChannelProvider(provider_path)
 elif para.channel == 12:
     generator = image_gen.twelve_Provider(provider_path)
-#generator = image_gen.fourChannelProvider(provider_path)
+
 net = unet.Unet(channels=generator.channels, n_class=generator.n_class, cost = para.cost,
                 cost_kwargs=dict(regularizer=para.regularizer), layers=para.layers, 
                 features_root=para.features_root, training=False)
@@ -93,7 +97,22 @@ with tf.Session(config=config) as sess:
     for i in range(len(patient_pre_list)):
         print('predict on {}'.format(patient_pre_list[i][0]))
         for j in range(len(patient_pre_list[i])):
-            if generator.channels==4:
+            if generator.channels==1:
+                path = patient_pre_list[i][j]
+                fat_path = path.replace("fat", "inn")
+                fat_img = np.array(np.load(fat_path), dtype=np.float32)
+                img_arr = np.zeros((fat_img.shape[0], fat_img.shape[1], 1), dtype=np.float32)
+                
+                img_arr[...,0] = fat_img
+                x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
+                y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
+                prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.keep_prob: 1.})
+                mask = prediction[0,...,1] > para.mask
+                #mask = prediction[0,...,1]
+                np.save(patient_save_list[i][j], mask)
+                plt.imshow(mask, cmap='gray')
+                plt.savefig(patient_save_list[i][j].replace('.npy', '.png'))
+            elif generator.channels==4:
                 path = patient_pre_list[i][j]
                 fat_path = path.replace("fat", "fat")
                 inn_path = path.replace("fat", "inn")
@@ -115,7 +134,50 @@ with tf.Session(config=config) as sess:
                 img_arr[...,2] = opp_img
                 img_arr[...,3] = opp_img
                 '''
-                img_arr = process_data(img_arr)
+                #img_arr = process_data(img_arr)
+                x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
+                y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
+                prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.keep_prob: 1.})
+                mask = prediction[0,...,1] > para.mask
+                #mask = prediction[0,...,1]
+                np.save(patient_save_list[i][j], mask)
+                plt.imshow(mask, cmap='gray')
+                plt.savefig(patient_save_list[i][j].replace('.npy', '.png'))
+            elif generator.channels==8:
+                path = patient_pre_list[i][j]
+                fat_path = path.replace("fat", "fat")
+                inn_path = path.replace("fat", "inn")
+                wat_path = path.replace("fat", "wat")
+                opp_path = path.replace("fat", "opp")
+                fin_path = path.replace("fat", "fin")
+                win_path = path.replace("fat", "win")
+                wop_path = path.replace("fat", "wop")
+                iop_path = path.replace("fat", "iop")
+                fat_img = np.array(np.load(fat_path), dtype=np.float32)
+                inn_img = np.array(np.load(inn_path), dtype=np.float32)
+                wat_img = np.array(np.load(wat_path), dtype=np.float32)
+                opp_img = np.array(np.load(opp_path), dtype=np.float32)
+                fin_img = np.array(np.load(fin_path), dtype=np.float32)
+                win_img = np.array(np.load(win_path), dtype=np.float32)
+                wop_img = np.array(np.load(wop_path), dtype=np.float32)
+                iop_img = np.array(np.load(iop_path), dtype=np.float32)
+                img_arr = np.zeros((fat_img.shape[0], fat_img.shape[1], 8), dtype=np.float32)
+                
+                img_arr[...,0] = fat_img
+                img_arr[...,1] = inn_img
+                img_arr[...,2] = wat_img
+                img_arr[...,3] = opp_img
+                img_arr[...,4] = fin_img
+                img_arr[...,5] = win_img
+                img_arr[...,6] = wop_img
+                img_arr[...,7] = iop_img
+                '''
+                img_arr[...,0] = opp_img
+                img_arr[...,1] = opp_img
+                img_arr[...,2] = opp_img
+                img_arr[...,3] = opp_img
+                '''
+                #img_arr = process_data(img_arr)
                 x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
                 y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
                 prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy, net.keep_prob: 1.})
@@ -140,7 +202,7 @@ with tf.Session(config=config) as sess:
                 img_arr[...,6] = wat_img[0]; img_arr[...,7]=wat_img[1];img_arr[...,8]=wat_img[2]
                 img_arr[...,9] = opp_img[0]; img_arr[...,10]=opp_img[1];img_arr[...,11]=opp_img[2]
 
-                img_arr = process_data(img_arr)
+                #img_arr = process_data(img_arr)
                 x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
                 y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
                 prediction = sess.run(net.predicter, feed_dict={net.x: x_test, net.y: y_dummy,  net.keep_prob: 1.})
