@@ -9,15 +9,14 @@ import os
 
 class Parameter(object):
     def __init__(self): 
-        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/norm_1'
+        self.root_address = '/DATA5_DB8/data/sxfeng/data/IVDNet/experiment/8modality_2'
         self.cost = 'CE' #name of the cost function. cross_entropy , dice
         self.regularizer=None       #power of the L2 regularizers added to the loss function
-        self.channel=1
+        self.channel=8
         self.layers=5
         self.features_root=32
         self.batch_size=4
         self.training_iters=468 // self.batch_size
-        #self.training_iters=60
         self.epochs=100
         self.display_step=468//self.batch_size*4     #number of steps till outputting stats
         self.dropout=1.0

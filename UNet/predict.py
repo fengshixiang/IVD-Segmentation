@@ -19,7 +19,7 @@ para = Parameter()
 root_address = para.root_address
 data_address = os.path.join(root_address, 'data/test')
 prediction_save_address = os.path.join(root_address, 'result/pre_image')
-unet_model_path = os.path.join(root_address, 'result/unet_trained/model.ckpt')
+unet_model_path = os.path.join(root_address, 'result/unet_trained/model.ckpt/_99')
 provider_path = os.path.join(root_address, 'data/test/*/*/*.npy')
 
 if not os.path.exists(prediction_save_address):
