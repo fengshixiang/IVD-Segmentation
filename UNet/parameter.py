@@ -17,7 +17,6 @@ class Parameter(object):
         self.features_root=32
         self.batch_size=4
         self.training_iters=468 // self.batch_size
-        #self.training_iters=60
         self.epochs=110
         self.display_step=1170     #number of steps till outputting stats
         self.dropout=1.0
@@ -26,6 +25,3 @@ class Parameter(object):
         self.decay_rate=0.5
         self.decay_epochs=95
         self.mask=0.5
-        self.create=1           # 1:conventional
-        self.RMVD=False
-        self.RMVD_value=0.5

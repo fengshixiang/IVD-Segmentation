@@ -4,7 +4,7 @@ import nibabel as nib
 import os
 
 data_address = '/DATA/data/sxfeng/data/IVDM3Seg/Training' 
-data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_norm' 
+data_save_address = '/DATA5_DB8/data/sxfeng/data/IVDM3Seg/npy_data_label_img_8m' 
 
 if not os.path.exists(data_save_address):
 	os.mkdir(data_save_address)
@@ -17,21 +17,27 @@ for adr in os.listdir(data_address):
 
 	for adr_1 in os.listdir(patient_adr):
 		if 'Labels' in adr_1:
-			image_adr = os.path.join(patient_adr, adr_1)
-			img = nib.load(image_adr).get_data()
-			#img_max = np.amax(img)
-			#img = np.clip(img, 0, 255)
+			img_adr = os.path.join(patient_adr, adr_1)
+			img = nib.load(img_adr).get_data()
 			img_arr = np.asarray(img)
-			image_save_adr = os.path.join(patient_save_adr, adr_1[0:-3] + 'npy')
-			np.save(image_save_adr, img_arr)
+			img_save_adr = os.path.join(patient_save_adr, adr_1[0:-3] + 'npy')
+			np.save(img_save_adr, img_arr)
 		else:
-			image_adr = os.path.join(patient_adr, adr_1)
-			img = nib.load(image_adr).get_data()
-			#img_max = np.amax(img)
-			#img = np.clip(img, 0, 255)
+			img_adr = os.path.join(patient_adr, adr_1)
+			img = nib.load(img_adr).get_data()
 			img_mean = np.mean(img)
 			img_std = np.std(img)
 			img = (img - img_mean) / img_std
 			img_arr = np.asarray(img)
-			image_save_adr = os.path.join(patient_save_adr, adr_1[0:-3] + 'npy')
-			np.save(image_save_adr, img_arr)
+			img_save_adr = os.path.join(patient_save_adr, adr_1[0:-3] + 'npy')
+			np.save(img_save_adr, img_arr)
+
+			label_adr = img_adr[0:-7] + 'Labels.nii'
+			label = nib.load(label_adr).get_data()
+			img_label = img + label
+			img_label_mean = np.mean(img_label)
+			img_label_std = np.std(img_label)
+			img_label = (img_label - img_label_mean) / img_label_std
+			img_label_arr = np.asarray(img_label)
+			img_label_save_adr = img_save_adr.replace('.npy', 'l.npy')
+			np.save(img_label_save_adr, img_arr)

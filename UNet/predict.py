@@ -118,12 +118,7 @@ with tf.Session(config=config) as sess:
                 img_arr[...,1] = inn_img
                 img_arr[...,2] = wat_img
                 img_arr[...,3] = opp_img
-                '''
-                img_arr[...,0] = opp_img
-                img_arr[...,1] = opp_img
-                img_arr[...,2] = opp_img
-                img_arr[...,3] = opp_img
-                '''
+
                 img_arr = process_data(img_arr)
                 x_test = img_arr.reshape(1, img_arr.shape[0], img_arr.shape[1], generator.channels)
                 y_dummy = np.empty((x_test.shape[0], x_test.shape[1], x_test.shape[2], 2))
