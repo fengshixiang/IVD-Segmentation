@@ -10,10 +10,9 @@ import tensorflow as tf
 
 from parameter import Parameter
 import util
-from layers import (weight_variable, weight_variable_devonc, bias_variable,
-                    conv2d, deconv2d, max_pool, pixel_wise_softmax, cross_entropy,
-                    inception_conv, inception_conv_asym, conv2d_2, deconv2d_2,
-                    cSE_layer, scSE_layer, sSE_layer, max_pool_xz, deconv2d_xz, deconv2d_xz_2, rmvd_layer)
+from layers import (weight_variable,  bias_variable, conv2d, deconv2d, max_pool, pixel_wise_softmax,
+                    cross_entropy, inception_conv, conv2d_2, deconv2d_2, cSE_layer,
+                    max_pool_xz, deconv2d_xz, deconv2d_xz_2, rmvd_layer)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 para = Parameter()
@@ -110,106 +109,6 @@ def create_conv_net(x, keep_prob, channels, n_class, layers=5, features_root=32,
         variables.append(b2)
 
     return [output_map], variables
-
-def create_conv_net_edge(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
-    # Conventianl UNet with deep supervision
-    logging.info(
-        "Layers {layers}, features {features}".format(
-            layers=layers,
-            features=features_root))
-
-    # Placeholder for the input image
-    with tf.name_scope("preprocessing"):
-        nx = tf.shape(x)[1]
-        ny = tf.shape(x)[2]
-        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
-        in_node = x_image
-        batch_size = tf.shape(x_image)[0]
-
-    weights = []
-    biases = []
-    convs = []
-    pools = OrderedDict()
-    deconv = OrderedDict()
-    dw_h_convs = OrderedDict()
-    up_h_convs = OrderedDict()
-
-    # down layers
-    for layer in range(0, layers):
-        with tf.name_scope("down_conv_{}".format(str(layer))):
-            features = 2 ** layer * features_root
-            if layer == 0:
-                conv1 = conv2d(in_node, channels, features, keep_prob, training)
-            else:
-                conv1 = conv2d(in_node, features//2, features, keep_prob, training)
-
-            conv2 = conv2d(conv1, features, features, keep_prob, training)
-            dw_h_convs[layer] = conv2
-
-            if layer < layers - 1:
-                pools[layer] = max_pool(dw_h_convs[layer], 2)
-                in_node = pools[layer]
-
-    in_node = dw_h_convs[layers - 1]
-
-    # up layers
-    for layer in range(layers - 2, -1, -1):
-        with tf.name_scope("up_conv_{}".format(str(layer))):
-            features = 2 ** (layer + 1) * features_root
-            h_deconv = tf.nn.relu(deconv2d(in_node, features, features//2, training))
-            h_deconv_concat = tf.concat([dw_h_convs[layer], h_deconv], 3)
-            deconv[layer] = h_deconv_concat
-
-            conv1 = conv2d(h_deconv_concat, features, features//2, keep_prob, training)
-            conv2 = conv2d(conv1, features//2, features//2, keep_prob, training)
-            in_node = conv2
-            up_h_convs[layer] = in_node
-
-
-    stddev = np.sqrt(2 / (3 ** 2 * features_root))
-    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
-    b = bias_variable([2], name="b")
-    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
-
-    # RCF
-    for layer in range(2, 0, -1):
-        with tf.name_scope("output_{}".format(str(layer))):
-            in_node = up_h_convs[layer]
-            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
-            deconv_tmp = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
-            up_h_convs["out_{}".format(layer)] = deconv_tmp
-            
-    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"]], 3)
-    w_out = weight_variable([1, 1, 6, 2], stddev, name="w_out")
-    b_out = bias_variable([2], name="b_out")
-    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
-
-
-    if summaries:
-        with tf.name_scope("summaries"):
-            for i, (c1, c2) in enumerate(convs):
-                tf.summary.image('summary_conv_%02d_01' % i, get_image_summary(c1))
-                tf.summary.image('summary_conv_%02d_02' % i, get_image_summary(c2))
-
-            for k in pools.keys():
-                tf.summary.image('summary_pool_%02d' % k, get_image_summary(pools[k]))
-
-            for k in deconv.keys():
-                tf.summary.image('summary_deconv_concat_%02d' % k, get_image_summary(deconv[k]))
-
-            for k in dw_h_convs.keys():
-                tf.summary.histogram("dw_convolution_%02d" % k + '/activations', dw_h_convs[k])
-
-    variables = []
-    for w1, w2 in weights:
-        variables.append(w1)
-        variables.append(w2)
-
-    for b1, b2 in biases:
-        variables.append(b1)
-        variables.append(b2)
-
-    return [output_map, up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"]], variables
 
 def create_UNet(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
     # Inception-conv UNet
@@ -328,7 +227,7 @@ def create_UNet_edge(x, keep_prob, channels, n_class, layers=5, features_root=32
             else:
                 conv = inception_conv(in_node, features//2, features, keep_prob, training)
 
-            #conv = scSE_layer(conv, features, ratio=8, name="down_conv_{}".format(layer))
+            #conv = cSE_layer(conv, features, ratio=8, name="down_conv_{}".format(layer))
             fat_dw_h_convs[layer] = conv
 
             if layer < layers-1:
@@ -345,7 +244,7 @@ def create_UNet_edge(x, keep_prob, channels, n_class, layers=5, features_root=32
 
             deconv[layer] = h_deconv_concat
             in_node = inception_conv(h_deconv_concat, features, features//2, keep_prob, training)
-            #in_node = scSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
+            #in_node = cSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
             up_h_convs[layer] = in_node
 
     stddev = np.sqrt(2 / (3 ** 2 * features_root))
@@ -427,7 +326,7 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
             else:
                 conv = inception_conv(in_node, features//2, features, keep_prob, training)
 
-            conv = scSE_layer(conv, features, ratio=4, name="down_conv_{}".format(layer))
+            conv = cSE_layer(conv, features, ratio=4, name="down_conv_{}".format(layer))
             fat_dw_h_convs[layer] = conv
 
             if layer < layers-1:
@@ -451,7 +350,7 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
 
             deconv[layer] = h_deconv_concat
             in_node = inception_conv(h_deconv_concat, features, features//2, keep_prob, training)
-            in_node = scSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
+            in_node = cSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
             up_h_convs[layer] = in_node
 
     stddev = np.sqrt(2 / (3 ** 2 * features_root))
@@ -494,232 +393,6 @@ def create_UNet_edge_xz_yz(x, keep_prob, channels, n_class, layers=5, features_r
         variables.append(b2)
 
     return [output_map, up_h_convs["out"], up_h_convs["out_1"], up_h_convs["out_2"]], variables
-
-def create_UNet_edge_rmvdtrain(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
-    logging.info(
-        "Layers {layers}, features {features}".format(
-            layers=layers,
-            features=features_root))
-
-    # Placeholder for the input image
-    with tf.name_scope("preprocessing"):
-        nx = tf.shape(x)[1]
-        ny = tf.shape(x)[2]
-        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
-        in_node = x_image
-        batch_size = tf.shape(x_image)[0]
-
-    weights = []
-    biases = []
-    fat_inputs = OrderedDict();
-    fat_pools = OrderedDict();
-    fat_dw_h_convs = OrderedDict();
-    deconv = OrderedDict()
-    up_h_convs = OrderedDict()
-
-    # rmvd train
-    in_node, excitation = rmvd_layer(in_node, 8, 1, name="rmvd_training")
-
-    # down layers
-    for layer in range(0, layers):
-        with tf.name_scope("down_conv_{}".format(str(layer))):
-            features = 2 ** layer * features_root
-            if layer == 0:
-                conv = inception_conv(in_node, channels, features, keep_prob, training)
-            else:
-                conv = inception_conv(in_node, features//2, features, keep_prob, training)
-
-            #conv = scSE_layer(conv, features, ratio=4, name="down_conv_{}".format(layer))
-            fat_dw_h_convs[layer] = conv
-
-            if layer < layers-1:
-                fat_pools[layer] = max_pool(conv, 2)
-                in_node = fat_pools[layer]
-
-    in_node = fat_dw_h_convs[layers-1]
-    # up layers
-    for layer in range(layers - 2, -1, -1):
-        with tf.name_scope("up_conv_{}".format(str(layer))):
-            features = 2 ** (layer + 1) * features_root
-            h_deconv = deconv2d(in_node, features, features//2, training)
-            h_deconv_concat = tf.concat([h_deconv, fat_dw_h_convs[layer]], 3)
-
-            deconv[layer] = h_deconv_concat
-            in_node = inception_conv(h_deconv_concat, features, features//2, keep_prob, training)
-            #in_node = scSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
-            up_h_convs[layer] = in_node
-
-    stddev = np.sqrt(2 / (3 ** 2 * features_root))
-    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
-    b = bias_variable([2], name="b")
-    output_map =  tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
-    up_h_convs["out"] = output_map
-    '''
-    # RCF
-    for layer in range(1, 0, -1):
-        with tf.name_scope("output_{}".format(str(layer))):
-            in_node = up_h_convs[layer]
-            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
-            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
-            up_h_convs["out_{}".format(layer)] = deconv
-            
-    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
-    w_out = weight_variable([1, 1, 4, 2], stddev, name="w_out")
-    b_out = bias_variable([2], name="b_out")
-    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
-    '''
-
-    if summaries:
-        with tf.name_scope("summaries"):
-            tf.summary.tensor_summary('excitation', excitation)
-            tf.summary.scalar('excitation_1_1', tf.reduce_mean(excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_2', tf.reduce_mean(excitation[0, ..., 1] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_3', tf.reduce_mean(excitation[0, ..., 2] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_4', tf.reduce_mean(excitation[0, ..., 3] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_5', tf.reduce_mean(excitation[0, ..., 4] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_6', tf.reduce_mean(excitation[0, ..., 5] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_7', tf.reduce_mean(excitation[0, ..., 6] / excitation[0, ..., 0]))
-            tf.summary.scalar('excitation_1_8', tf.reduce_mean(excitation[0, ..., 7] / excitation[0, ..., 0]))
-
-            tf.summary.scalar('excitation_2_1', tf.reduce_mean(excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_2', tf.reduce_mean(excitation[1, ..., 1] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_3', tf.reduce_mean(excitation[1, ..., 2] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_4', tf.reduce_mean(excitation[1, ..., 3] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_5', tf.reduce_mean(excitation[1, ..., 4] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_6', tf.reduce_mean(excitation[1, ..., 5] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_7', tf.reduce_mean(excitation[1, ..., 6] / excitation[1, ..., 0]))
-            tf.summary.scalar('excitation_2_8', tf.reduce_mean(excitation[1, ..., 7] / excitation[1, ..., 0]))
-
-            tf.summary.scalar('excitation_3_1', tf.reduce_mean(excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_2', tf.reduce_mean(excitation[2, ..., 1] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_3', tf.reduce_mean(excitation[2, ..., 2] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_4', tf.reduce_mean(excitation[2, ..., 3] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_5', tf.reduce_mean(excitation[2, ..., 4] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_6', tf.reduce_mean(excitation[2, ..., 5] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_7', tf.reduce_mean(excitation[2, ..., 6] / excitation[2, ..., 0]))
-            tf.summary.scalar('excitation_3_8', tf.reduce_mean(excitation[2, ..., 7] / excitation[2, ..., 0]))
-
-            tf.summary.scalar('excitation_4_1', tf.reduce_mean(excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_2', tf.reduce_mean(excitation[3, ..., 1] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_3', tf.reduce_mean(excitation[3, ..., 2] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_4', tf.reduce_mean(excitation[3, ..., 3] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_5', tf.reduce_mean(excitation[3, ..., 4] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_6', tf.reduce_mean(excitation[3, ..., 5] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_7', tf.reduce_mean(excitation[3, ..., 6] / excitation[3, ..., 0]))
-            tf.summary.scalar('excitation_4_8', tf.reduce_mean(excitation[3, ..., 7] / excitation[3, ..., 0]))
-
-            tf.summary.scalar('excitation_0_1', tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_2', tf.reduce_mean(excitation[..., 1])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_3', tf.reduce_mean(excitation[..., 2])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_4', tf.reduce_mean(excitation[..., 3])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_5', tf.reduce_mean(excitation[..., 4])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_6', tf.reduce_mean(excitation[..., 5])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_7', tf.reduce_mean(excitation[..., 6])/tf.reduce_mean(excitation[..., 0]))
-            tf.summary.scalar('excitation_0_8', tf.reduce_mean(excitation[..., 7])/tf.reduce_mean(excitation[..., 0]))
-
-
-    variables = []
-    for w1, w2 in weights:
-        variables.append(w1)
-        variables.append(w2)
-
-    for b1, b2 in biases:
-        variables.append(b1)
-        variables.append(b2)
-
-    return [output_map], variables
-
-def create_UNet_edge_asym(x, keep_prob, channels, n_class, layers=5, features_root=32, summaries=True, training=True):
-    logging.info(
-        "Layers {layers}, features {features}".format(
-            layers=layers,
-            features=features_root))
-
-    # Placeholder for the input image
-    with tf.name_scope("preprocessing"):
-        nx = tf.shape(x)[1]
-        ny = tf.shape(x)[2]
-        x_image = tf.reshape(x, tf.stack([-1, nx, ny, channels]))
-        in_node = x_image
-        batch_size = tf.shape(x_image)[0]
-
-    weights = []
-    biases = []
-    fat_inputs = OrderedDict();
-    fat_pools = OrderedDict();
-    fat_dw_h_convs = OrderedDict();
-    deconv = OrderedDict()
-    up_h_convs = OrderedDict()
-
-    # down layers
-    for layer in range(0, layers):
-        with tf.name_scope("down_conv_{}".format(str(layer))):
-            features = 2 ** layer * features_root
-            if layer == 0:
-                conv = inception_conv_asym(in_node, 4, features, keep_prob, training)
-            else:
-                conv = inception_conv_asym(in_node, features//2, features, keep_prob, training)
-
-            #conv = scSE_layer(conv, features, ratio=4, name="down_conv_{}".format(layer))
-            fat_dw_h_convs[layer] = conv
-
-            if layer < layers-1:
-                fat_pools[layer] = max_pool(conv, 2)
-                in_node = fat_pools[layer]
-
-    in_node = fat_dw_h_convs[layers-1]
-    # up layers
-    for layer in range(layers - 2, -1, -1):
-        with tf.name_scope("up_conv_{}".format(str(layer))):
-            features = 2 ** (layer + 1) * features_root
-            h_deconv = deconv2d(in_node, features, features//2, training)
-            h_deconv_concat = tf.concat([h_deconv, fat_dw_h_convs[layer]], 3)
-
-            deconv[layer] = h_deconv_concat
-            in_node = inception_conv(h_deconv_concat, features, features//2, keep_prob, training)
-            #in_node = scSE_layer(in_node, features//2, ratio=4, name="up_conv_{}".format(layer))
-            up_h_convs[layer] = in_node
-
-    stddev = np.sqrt(2 / (3 ** 2 * features_root))
-    w = weight_variable([3, 3, features_root, 2], stddev, name="w")
-    b = bias_variable([2], name="b")
-    up_h_convs["out"] = tf.nn.bias_add(tf.nn.conv2d(up_h_convs[0], w, strides=[1, 1, 1, 1], padding="SAME"), b)
-
-    # RCF
-    for layer in range(1, 0, -1):
-        with tf.name_scope("output_{}".format(str(layer))):
-            in_node = up_h_convs[layer]
-            conv = conv2d_2(in_node, features_root*2**layer, 2, keep_prob)
-            deconv = deconv2d_2(conv, 2, 2, 2**layer, keep_prob)
-            up_h_convs["out_{}".format(layer)] = deconv
-            
-    in_node = tf.concat([up_h_convs["out"], up_h_convs["out_1"]], 3)
-    w_out = weight_variable([1, 1, 4, 2], stddev, name="w_out")
-    b_out = bias_variable([2], name="b_out")
-    output_map = tf.nn.bias_add(tf.nn.conv2d(in_node, w_out, strides=[1, 1, 1, 1], padding="SAME"), b_out)
-
-
-    if summaries:
-        with tf.name_scope("summaries"):
-            for k in fat_pools.keys():
-                tf.summary.image('summary_pool_%02d' % k, get_image_summary(fat_pools[k]))
-
-            for k in fat_dw_h_convs.keys():
-                tf.summary.histogram("dw_convolution_%02d" % k + '/activations', fat_dw_h_convs[k])
-
-            for k in up_h_convs.keys():
-                tf.summary.histogram("up_convolution_%s" % k + '/activations', up_h_convs[k])
-
-    variables = []
-    for w1, w2 in weights:
-        variables.append(w1)
-        variables.append(w2)
-
-    for b1, b2 in biases:
-        variables.append(b1)
-        variables.append(b2)
-
-    return [output_map, up_h_convs["out"], up_h_convs["out_1"]], variables
 
 class Unet(object):
     """
@@ -779,7 +452,7 @@ class Unet(object):
                 intersection = tf.reduce_sum(prediction * self.y)
                 union = eps + tf.reduce_sum(prediction) + tf.reduce_sum(self.y)
                 loss = -(2 * intersection / (union))
-            elif cost_name == "shape_3":
+            elif cost_name == "shape":
                 loss = 0
                 for logit in logits:
                     flat_logit = tf.reshape(logit, [-1, self.n_class])
@@ -787,7 +460,7 @@ class Unet(object):
                     loss_tmp = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=flat_logit, targets=flat_label, pos_weight=10))
 
                     loss += loss_tmp
-            elif cost_name == "EPE_3":
+            elif cost_name == "EPE":
                 loss = 0
                 for logit in logits:
                     edge_gt = tf.image.sobel_edges(self.y / tf.reduce_max(self.y))
@@ -795,19 +468,6 @@ class Unet(object):
                     edge_pre = tf.image.sobel_edges(logit / tf.reduce_max(logit))
                     edge_pre = tf.abs(edge_pre[...,0]) + tf.abs(edge_pre[...,1])
                     loss += tf.sqrt(tf.nn.l2_loss(edge_gt - edge_pre)*2)/256
-            elif cost_name == "shape_3+EPE_3":
-                loss = 0
-                for logit in logits:
-                    flat_logit = tf.reshape(logit, [-1, self.n_class])
-                    flat_label = tf.reshape(self.y, [-1, self.n_class])
-                    loss_tmp = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=flat_logit, targets=flat_label, pos_weight=0.1))
-
-                    edge_gt = tf.image.sobel_edges(self.y / tf.reduce_max(self.y))
-                    edge_gt = tf.abs(edge_gt[...,0]) + tf.abs(edge_gt[...,1])
-                    edge_pre = tf.image.sobel_edges(logit / tf.reduce_max(logit))
-                    edge_pre = tf.abs(edge_pre[...,0]) + tf.abs(edge_pre[...,1])
-                    loss_tmp += tf.sqrt(tf.nn.l2_loss(edge_gt - edge_pre)*2)/256/10
-                    loss += loss_tmp
             else:
                 raise ValueError("Unknown cost function: " % cost_name)
 
@@ -862,7 +522,6 @@ class Unet(object):
         saver = tf.train.Saver(tf.global_variables())
         saver.restore(sess, model_path)
         logging.info("Model restored from file: %s" % model_path)
-
 
 class Trainer(object):
     """
@@ -1078,7 +737,6 @@ def _update_avg_gradients(avg_gradients, gradients, step):
 
     return avg_gradients
 
-
 def error_rate(predictions, labels):
     """
     Return the error rate based on dense predictions and 1-hot labels.
@@ -1088,7 +746,6 @@ def error_rate(predictions, labels):
             100.0 *
             np.sum(np.argmax(predictions, 3) == np.argmax(labels, 3)) /
             (predictions.shape[0] * predictions.shape[1] * predictions.shape[2]))
-
 
 def get_image_summary(img, idx=0):
     """

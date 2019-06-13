@@ -328,8 +328,6 @@ def predict_model(name):
         generator = image_gen.fourChannelProvider(provider_path)
     elif para.channel == 8:
         generator = image_gen.eightChannelProvider(provider_path)
-    elif para.channel == 12:
-        generator = image_gen.twelve_Provider(provider_path)
 
     net = unet.Unet(channels=generator.channels, n_class=generator.n_class, cost = para.cost,
                     cost_kwargs=dict(regularizer=para.regularizer), layers=para.layers, 

@@ -25,6 +25,5 @@ class Parameter(object):
         self.decay_rate=0.5
         self.decay_epochs=80
         self.mask=0.5
-        self.create=1           # 1:conventional
         self.RMVD=False
         self.RMVD_value=0.5

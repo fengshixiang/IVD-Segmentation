@@ -26,8 +26,6 @@ elif para.channel == 4:
     generator = image_gen.fourChannelProvider(generator_address)
 elif para.channel == 8:
     generator = image_gen.eightChannelProvider(generator_address)
-elif para.channel == 12:
-    generator = image_gen.twelve_Provider(generator_address)
 
 result_path = os.path.join(root_address, 'result')
 if not os.path.exists(result_path):
@@ -57,7 +55,7 @@ logging.info(
 "Layers: {layers},\nFeatures: {features}\n\
 Cost: {cost}, Epochs: {epochs}, Decay_epochs: {decay_epochs}\n\
 Dropout: {dropout}, Learning_rate: {learning_rate}\n\
-Channel: {channel}\nCreate: {create}".format(
+Channel: {channel}\n".format(
         layers=para.layers,
         features=para.features_root,
         cost=para.cost,
@@ -65,15 +63,13 @@ Channel: {channel}\nCreate: {create}".format(
         decay_epochs=para.decay_epochs,
         dropout=para.dropout,
         learning_rate=para.learning_rate,
-        channel=para.channel,
-        create=para.create))
+        channel=para.channel))
 
 fo_addr = os.path.join(root_address, 'para.txt')
 fo = open(fo_addr, 'w')
 fo.write("Layers: {layers}\nBatch_size: {batch_size}\nFeatures: {features}\n\
 Cost: {cost}\nEpochs: {epochs}\nDecay_epochs: {decay_epochs}\nDropout: {dropout}\nLearning_rate: {learning_rate}\n\
-Root_address: {root_address}\nChannel: {channel}\n\
-Create: {create}".format(
+Root_address: {root_address}\nChannel: {channel}\n".format(
             layers=para.layers,
             batch_size=para.batch_size,
             features=para.features_root,
@@ -83,8 +79,7 @@ Create: {create}".format(
             dropout=para.dropout,
             learning_rate=para.learning_rate,
             root_address=para.root_address,
-            channel=para.channel,
-            create=para.create))
+            channel=para.channel))
 fo.close()
 
 plt.imshow(x_test[0,...,0], cmap='Greys_r')
